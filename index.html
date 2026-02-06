@@ -7,20 +7,160 @@
     <title>CIC Games</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap">
     <style>
-      body { font-family: 'Google Sans', sans-serif; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: 'Google Sans', sans-serif;
+        color: #fff;
+        overflow: hidden;
+      }
+      #skybox-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+      }
+      #content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        text-align: center;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+      }
+      #content h1 {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+      }
+      #content p {
+        font-size: 1.25rem;
+      }
+      footer {
+        position: fixed;
+        bottom: 1rem;
+        width: 100%;
+        text-align: center;
+        z-index: 1;
+        font-size: 0.85rem;
+        opacity: 0.7;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+      }
     </style>
 
   </head>
 
   <body>
 
-    <h1>CIC Games Australia</h1>
+    <canvas id="skybox-canvas"></canvas>
 
-    <p>CORE64 – in development</p>
+    <div id="content">
+      <h1>CIC Games Australia</h1>
+      <p>CORE64 – in development</p>
+    </div>
 
     <footer>
       <p>&copy; 2026 Coming in Clutch Games Australia<br>ABN 57 409 143 247</p>
     </footer>
+
+    <script type="importmap">
+      { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+    </script>
+    <script type="module">
+      import * as THREE from 'three';
+      import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/postprocessing/EffectComposer.js';
+      import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/postprocessing/RenderPass.js';
+      import { ShaderPass } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/postprocessing/ShaderPass.js';
+      import { OutputPass } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/postprocessing/OutputPass.js';
+
+      const canvas = document.getElementById('skybox-canvas');
+      const renderer = new THREE.WebGLRenderer({ canvas });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+      const loader = new THREE.CubeTextureLoader();
+      loader.setPath('images/');
+      const textureCube = loader.load([
+        'right.png', 'left.png',
+        'top.png', 'bottom.png',
+        'front.png', 'back.png'
+      ]);
+      scene.background = textureCube;
+
+      const hueShader = {
+        uniforms: { tDiffuse: { value: null }, uHue: { value: 0.0 } },
+        vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+        fragmentShader: `
+          uniform sampler2D tDiffuse;
+          uniform float uHue;
+          varying vec2 vUv;
+          vec3 rgb2hsl(vec3 c) {
+            float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b));
+            float l = (mx + mn) * 0.5, s = 0.0, h = 0.0;
+            if (mx != mn) {
+              float d = mx - mn;
+              s = l > 0.5 ? d / (2.0 - mx - mn) : d / (mx + mn);
+              if (mx == c.r) h = (c.g - c.b) / d + (c.g < c.b ? 6.0 : 0.0);
+              else if (mx == c.g) h = (c.b - c.r) / d + 2.0;
+              else h = (c.r - c.g) / d + 4.0;
+              h /= 6.0;
+            }
+            return vec3(h, s, l);
+          }
+          float hue2rgb(float p, float q, float t) {
+            if (t < 0.0) t += 1.0; if (t > 1.0) t -= 1.0;
+            if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
+            if (t < 1.0/2.0) return q;
+            if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+            return p;
+          }
+          vec3 hsl2rgb(vec3 c) {
+            if (c.y == 0.0) return vec3(c.z);
+            float q = c.z < 0.5 ? c.z * (1.0 + c.y) : c.z + c.y - c.z * c.y;
+            float p = 2.0 * c.z - q;
+            return vec3(hue2rgb(p, q, c.x + 1.0/3.0), hue2rgb(p, q, c.x), hue2rgb(p, q, c.x - 1.0/3.0));
+          }
+          void main() {
+            vec4 tex = texture2D(tDiffuse, vUv);
+            vec3 hsl = rgb2hsl(tex.rgb);
+            hsl.x = fract(hsl.x + uHue);
+            hsl.y = min(hsl.y * 1.15, 1.0);
+            hsl.z = min(hsl.z * 1.1, 1.0);
+            vec3 rgb = hsl2rgb(hsl);
+            rgb = (rgb - 0.5) * 1.01 + 0.5;
+            gl_FragColor = vec4(clamp(rgb, 0.0, 1.0), tex.a);
+          }
+        `
+      };
+
+      const composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      const huePass = new ShaderPass(hueShader);
+      composer.addPass(huePass);
+      composer.addPass(new OutputPass());
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      function animate() {
+        requestAnimationFrame(animate);
+        camera.rotation.y += 0.0005;
+        camera.rotation.x = Math.sin(Date.now() * 0.00005) * 0.1;
+        huePass.uniforms.uHue.value = (Date.now() * 0.00002) % 1.0;
+        composer.render();
+      }
+      animate();
+    </script>
 
   </body>
 
