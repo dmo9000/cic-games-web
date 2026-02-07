@@ -152,10 +152,15 @@
         composer.setSize(window.innerWidth, window.innerHeight);
       });
 
+      // Random slow rotation direction
+      const angle = Math.random() * Math.PI * 2;
+      const rotSpeedY = Math.cos(angle) * 0.0005;
+      const rotSpeedX = Math.sin(angle) * 0.0005;
+
       function animate() {
         requestAnimationFrame(animate);
-        camera.rotation.y += 0.0005;
-        camera.rotation.x = Math.sin(Date.now() * 0.00005) * 0.1;
+        camera.rotation.y += rotSpeedY;
+        camera.rotation.x += rotSpeedX;
         huePass.uniforms.uHue.value = (Date.now() * 0.00002) % 1.0;
         composer.render();
       }
