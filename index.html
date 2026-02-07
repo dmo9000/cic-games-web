@@ -32,12 +32,10 @@
         text-align: center;
         text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
       }
-      #content h1 {
-        font-size: 3rem;
-        margin-bottom: 0.5rem;
-      }
-      #content p {
-        font-size: 1.25rem;
+      #content canvas, footer canvas {
+        max-width: 90vw;
+        height: auto;
+        image-rendering: pixelated;
       }
       footer {
         position: fixed;
@@ -45,9 +43,7 @@
         width: 100%;
         text-align: center;
         z-index: 1;
-        font-size: 0.85rem;
         opacity: 0.7;
-        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
       }
     </style>
 
