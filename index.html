@@ -58,14 +58,14 @@
     <canvas id="skybox-canvas"></canvas>
 
     <div id="content">
-      <h1>CIC Games Australia</h1>
-      <p>CORE64 – in development</p>
+      <canvas id="bmf-title"></canvas>
     </div>
 
     <footer>
-      <p>&copy; 2026 Coming in Clutch Games Australia<br>ABN 57 409 143 247</p>
+      <canvas id="bmf-footer"></canvas>
     </footer>
 
+    <script src="bmf.js"></script>
     <script type="importmap">
       { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
     </script>
@@ -160,6 +160,52 @@
         composer.render();
       }
       animate();
+    </script>
+    <script>
+      (async function() {
+        const titleCanvas = document.getElementById('bmf-title');
+        const subtitleCanvas = document.getElementById('bmf-subtitle');
+        const footerCanvas = document.getElementById('bmf-footer');
+
+        const titleR = new BMFRenderer(titleCanvas);
+        const footerR = new BMFRenderer(footerCanvas);
+
+        await Promise.all([
+          titleR.loadFont('fonts/Quaked.bmf'),
+          footerR.loadFont('fonts/Quaked.bmf'),
+        ]);
+
+        const shadowOpts = { offsetX: 1, offsetY: 1, color: '#000000' };
+
+        // Title: "CORE64" - scale 12, animated gradient
+        const titleText = 'CORE64';
+        const titleOpts = { scaleX: 12, scaleY: 12, shadow: shadowOpts, gradient: {
+          palette: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#00ffff', '#0088ff', '#ff00ff'],
+          offset: 0,
+        }};
+        const titleSize = titleR.measureText(titleText, titleOpts);
+        titleCanvas.width = titleSize.width;
+        titleCanvas.height = titleSize.height;
+
+        function animateTitle() {
+          titleOpts.gradient.offset = (Date.now() * 0.003) % 7;
+          titleR.drawText(titleText, 0, 0, titleOpts);
+          requestAnimationFrame(animateTitle);
+        }
+        animateTitle();
+
+        // Footer - single line
+        const footerText = '(C) 2026 CIC Games, ABN 57 409 143 247';
+        const fScale = 2;
+        const fSize = footerR.measureText(footerText, { scaleX: fScale, scaleY: fScale, shadow: shadowOpts });
+        footerCanvas.width = fSize.width;
+        footerCanvas.height = fSize.height;
+        footerR.drawText(footerText, 0, 0, {
+          scaleX: fScale, scaleY: fScale,
+          color: [240, 240, 240, 255],
+          shadow: shadowOpts,
+        });
+      })();
     </script>
 
   </body>
