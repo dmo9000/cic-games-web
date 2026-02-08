@@ -36,6 +36,8 @@
         max-width: 90vw;
         height: auto;
         image-rendering: pixelated;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: crisp-edges;
       }
       footer {
         position: fixed;
@@ -43,7 +45,11 @@
         width: 100%;
         text-align: center;
         z-index: 1;
-        opacity: 0.7;
+        font-family: 'Google Sans', sans-serif;
+        font-size: 0.85rem;
+        color: #fff;
+        text-shadow: 1px 1px 2px #000, 0 0 4px rgba(0,0,0,0.5);
+        opacity: 0.8;
       }
     </style>
 
@@ -58,7 +64,7 @@
     </div>
 
     <footer>
-      <canvas id="bmf-footer"></canvas>
+      <p>&copy; 2026 CIC Games<br>ABN 57 409 143 247</p>
     </footer>
 
     <script src="bmf.js"></script>
@@ -71,15 +77,17 @@
       import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/postprocessing/RenderPass.js';
       import { ShaderPass } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/postprocessing/ShaderPass.js';
       import { OutputPass } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/postprocessing/OutputPass.js';
+      import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/loaders/GLTFLoader.js';
 
       const canvas = document.getElementById('skybox-canvas');
-      const renderer = new THREE.WebGLRenderer({ canvas });
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setPixelRatio(window.devicePixelRatio);
 
-      const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
+      // Skybox scene (hue shifted)
+      const skyScene = new THREE.Scene();
       const loader = new THREE.CubeTextureLoader();
       loader.setPath('images/');
       const textureCube = loader.load([
@@ -87,7 +95,57 @@
         'top.jpg', 'bottom.jpg',
         'front.jpg', 'back.jpg'
       ]);
-      scene.background = textureCube;
+      skyScene.background = textureCube;
+
+      // Container scene (no hue shift)
+      const containerScene = new THREE.Scene();
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      containerScene.add(ambientLight);
+      const dirLight = new THREE.DirectionalLight(0xffeedd, 3.0);
+      dirLight.position.set(5, 10, 7);
+      containerScene.add(dirLight);
+      const fillLight = new THREE.DirectionalLight(0x8899bb, 1.5);
+      fillLight.position.set(-5, -3, -5);
+      containerScene.add(fillLight);
+
+      // Load and scatter shipping containers
+      const containers = [];
+      const gltfLoader = new GLTFLoader();
+      gltfLoader.load('gltf/Cargo Container.gltf', (gltf) => {
+        const template = gltf.scene;
+        const count = 30;
+        for (let i = 0; i < count; i++) {
+          const instance = template.clone();
+          const hue = Math.random();
+          instance.traverse((child) => {
+            if (child.isMesh) {
+              child.material = child.material.clone();
+              child.material.color.setHSL(hue, 0.8, 0.55);
+            }
+          });
+          const dist = 30 + Math.random() * 170;
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          instance.position.set(
+            dist * Math.sin(phi) * Math.cos(theta),
+            dist * Math.sin(phi) * Math.sin(theta),
+            dist * Math.cos(phi)
+          );
+          instance.scale.set(0.01, 0.01, 0.01);
+          instance.rotation.set(
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2
+          );
+          instance.userData.tumble = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.005,
+            (Math.random() - 0.5) * 0.005,
+            (Math.random() - 0.5) * 0.005
+          );
+          containerScene.add(instance);
+          containers.push(instance);
+        }
+      });
 
       const hueShader = {
         uniforms: { tDiffuse: { value: null }, uHue: { value: 0.0 } },
@@ -136,10 +194,11 @@
       };
 
       const composer = new EffectComposer(renderer);
-      composer.addPass(new RenderPass(scene, camera));
+      composer.addPass(new RenderPass(skyScene, camera));
       const huePass = new ShaderPass(hueShader);
       composer.addPass(huePass);
       composer.addPass(new OutputPass());
+      renderer.autoClear = false;
 
       window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -157,24 +216,25 @@
         requestAnimationFrame(animate);
         camera.rotation.y += rotSpeedY;
         camera.rotation.x += rotSpeedX;
+        for (const c of containers) {
+          c.rotation.x += c.userData.tumble.x;
+          c.rotation.y += c.userData.tumble.y;
+          c.rotation.z += c.userData.tumble.z;
+        }
         huePass.uniforms.uHue.value = (Date.now() * 0.00002) % 1.0;
+        renderer.clear();
         composer.render();
+        renderer.clearDepth();
+        renderer.render(containerScene, camera);
       }
       animate();
     </script>
     <script>
       (async function() {
         const titleCanvas = document.getElementById('bmf-title');
-        const subtitleCanvas = document.getElementById('bmf-subtitle');
-        const footerCanvas = document.getElementById('bmf-footer');
 
         const titleR = new BMFRenderer(titleCanvas);
-        const footerR = new BMFRenderer(footerCanvas);
-
-        await Promise.all([
-          titleR.loadFont('fonts/Quaked.bmf'),
-          footerR.loadFont('fonts/Quaked.bmf'),
-        ]);
+        await titleR.loadFont('fonts/Quaked.bmf');
 
         const shadowOpts = { offsetX: 1, offsetY: 1, color: '#000000' };
 
@@ -194,18 +254,6 @@
           requestAnimationFrame(animateTitle);
         }
         animateTitle();
-
-        // Footer - single line
-        const footerText = '(C) 2026 CIC Games, ABN 57 409 143 247';
-        const fScale = 2;
-        const fSize = footerR.measureText(footerText, { scaleX: fScale, scaleY: fScale, shadow: shadowOpts });
-        footerCanvas.width = fSize.width;
-        footerCanvas.height = fSize.height;
-        footerR.drawText(footerText, 0, 0, {
-          scaleX: fScale, scaleY: fScale,
-          color: [240, 240, 240, 255],
-          shadow: shadowOpts,
-        });
       })();
     </script>
 

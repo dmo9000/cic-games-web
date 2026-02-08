@@ -6,7 +6,8 @@
 class BMFRenderer {
   constructor(canvas) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
+    this.ctx = canvas.getContext('2d', { alpha: true });
+    this.ctx.imageSmoothingEnabled = false;
     this.fonts = {};
     this.defaultFont = null;
   }
