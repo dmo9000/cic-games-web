@@ -127,6 +127,8 @@ class BMFRenderer {
     for (let row = 0; row < 8; row++) {
       const byte = fontData[glyphOffset + row];
       if (byte === 0) continue;
+      // One color per font row (8 bands), not per pixel scanline
+      const color = this._getGradientColor(row, 8, palette, gradientOffset);
       for (let col = 0; col < 8; col++) {
         if (!(byte & (0x80 >> col))) continue;
         const px0 = baseX + col * scaleX;
@@ -134,7 +136,6 @@ class BMFRenderer {
         for (let sy = 0; sy < scaleY; sy++) {
           const py = py0 + sy;
           if (py < 0 || py >= texH) continue;
-          const color = this._getGradientColor(py, texH, palette, gradientOffset);
           for (let sx = 0; sx < scaleX; sx++) {
             const px = px0 + sx;
             if (px < 0 || px >= texW) continue;
@@ -182,6 +183,7 @@ class BMFRenderer {
     const fontName = options.font || this.defaultFont;
     const fontData = this.fonts[fontName];
     if (!fontData) throw new Error(`Font not loaded: ${fontName}`);
+    const fontOverrides = options.fontOverrides || null;
 
     const scaleX = options.scaleX || 1;
     const scaleY = options.scaleY || 1;
@@ -248,26 +250,30 @@ class BMFRenderer {
       const charBaseX = i * 8 * scaleX + baseOffX;
       const charBaseY = baseOffY;
 
+      // Resolve per-character font data (override or default)
+      const charFont = (fontOverrides && fontOverrides[i] && this.fonts[fontOverrides[i]])
+        ? this.fonts[fontOverrides[i]] : fontData;
+
       // 1. Render outline (underneath everything)
       for (const off of outlineOffsets) {
-        this._renderGlyph(pixels, texW, texH, fontData, charCode,
+        this._renderGlyph(pixels, texW, texH, charFont, charCode,
           charBaseX + off.ox, charBaseY + off.oy, scaleX, scaleY, off.color);
       }
 
       // 2. Render shadow
       if (shadow) {
         const sc = this._parseColor(shadow.color || '#000000');
-        this._renderGlyph(pixels, texW, texH, fontData, charCode,
+        this._renderGlyph(pixels, texW, texH, charFont, charCode,
           charBaseX + shadowOffX * scaleX, charBaseY + shadowOffY * scaleY,
           scaleX, scaleY, sc);
       }
 
       // 3. Render foreground (with gradient or solid color)
       if (parsedPalette) {
-        this._renderGlyphGradient(pixels, texW, texH, fontData, charCode,
+        this._renderGlyphGradient(pixels, texW, texH, charFont, charCode,
           charBaseX, charBaseY, scaleX, scaleY, parsedPalette, gradient.offset || 0);
       } else {
-        this._renderGlyph(pixels, texW, texH, fontData, charCode,
+        this._renderGlyph(pixels, texW, texH, charFont, charCode,
           charBaseX, charBaseY, scaleX, scaleY, color);
       }
     }

@@ -5,6 +5,7 @@
   <head>
 
     <title>CIC Games</title>
+    <meta name="format-detection" content="telephone=no">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap">
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -31,6 +32,10 @@
         min-height: 100vh;
         text-align: center;
         text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+        pointer-events: none;
+      }
+      #content canvas {
+        pointer-events: auto;
       }
       #content canvas, footer canvas {
         max-width: 90vw;
@@ -38,6 +43,16 @@
         image-rendering: pixelated;
         image-rendering: -moz-crisp-edges;
         image-rendering: crisp-edges;
+      }
+      #vignette {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+        background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
       }
       footer {
         position: fixed;
@@ -58,13 +73,15 @@
   <body>
 
     <canvas id="skybox-canvas"></canvas>
+    <div id="vignette"></div>
 
     <div id="content">
       <canvas id="bmf-title"></canvas>
+      <canvas id="bmf-play" style="cursor:pointer; margin-top: 1rem;"></canvas>
     </div>
 
     <footer>
-      <p>&copy; 2026 CIC Games<br>ABN 57 409 143 247</p>
+      <p>&copy; 2026 CIC Games<br><span style="font-size:0.5em">ABN 57409143247</span></p>
     </footer>
 
     <script src="bmf.js"></script>
@@ -101,20 +118,64 @@
       const containerScene = new THREE.Scene();
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
       containerScene.add(ambientLight);
-      const dirLight = new THREE.DirectionalLight(0xffeedd, 3.0);
+      const dirLight = new THREE.DirectionalLight(0xffeedd, 4.5);
       dirLight.position.set(5, 10, 7);
       containerScene.add(dirLight);
-      const fillLight = new THREE.DirectionalLight(0x8899bb, 1.5);
+      const fillLight = new THREE.DirectionalLight(0x8899bb, 2.25);
       fillLight.position.set(-5, -3, -5);
       containerScene.add(fillLight);
+
+      // Shared placement tracking for all spawned objects
+      const placed = [];
+      const minSep = 5;
+      const minSepSq = minSep * minSep;
+      function findPosition(index, total) {
+        let px, py, pz, attempts = 0;
+        do {
+          const u = (index + Math.random()) / total;
+          const dist = 15 + Math.cbrt(u) * 80;
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          px = dist * Math.sin(phi) * Math.cos(theta);
+          py = dist * Math.sin(phi) * Math.sin(theta);
+          pz = dist * Math.cos(phi);
+          attempts++;
+        } while (attempts < 50 && placed.some(p => {
+          const dx = px - p[0], dy = py - p[1], dz = pz - p[2];
+          return dx*dx + dy*dy + dz*dz < minSepSq;
+        }));
+        placed.push([px, py, pz]);
+        return [px, py, pz];
+      }
+
+      function findTreePosition(index, total) {
+        let px, py, pz, attempts = 0;
+        do {
+          const u = (index + Math.random()) / total;
+          const dist = 50 + Math.cbrt(u) * 150;
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          px = dist * Math.sin(phi) * Math.cos(theta);
+          py = dist * Math.sin(phi) * Math.sin(theta);
+          pz = dist * Math.cos(phi);
+          attempts++;
+        } while (attempts < 50 && placed.some(p => {
+          const dx = px - p[0], dy = py - p[1], dz = pz - p[2];
+          return dx*dx + dy*dy + dz*dz < minSepSq;
+        }));
+        placed.push([px, py, pz]);
+        return [px, py, pz];
+      }
 
       // Load and scatter shipping containers
       const containers = [];
       const gltfLoader = new GLTFLoader();
       gltfLoader.load('gltf/Cargo Container.gltf', (gltf) => {
         const template = gltf.scene;
-        const count = 30;
+        const count = 60;
         for (let i = 0; i < count; i++) {
+          const [px, py, pz] = findPosition(i, count);
+
           const instance = template.clone();
           const hue = Math.random();
           instance.traverse((child) => {
@@ -123,14 +184,7 @@
               child.material.color.setHSL(hue, 0.8, 0.55);
             }
           });
-          const dist = 30 + Math.random() * 170;
-          const theta = Math.random() * Math.PI * 2;
-          const phi = Math.acos(2 * Math.random() - 1);
-          instance.position.set(
-            dist * Math.sin(phi) * Math.cos(theta),
-            dist * Math.sin(phi) * Math.sin(theta),
-            dist * Math.cos(phi)
-          );
+          instance.position.set(px, py, pz);
           instance.scale.set(0.01, 0.01, 0.01);
           instance.rotation.set(
             Math.random() * Math.PI * 2,
@@ -138,12 +192,82 @@
             Math.random() * Math.PI * 2
           );
           instance.userData.tumble = new THREE.Vector3(
-            (Math.random() - 0.5) * 0.005,
-            (Math.random() - 0.5) * 0.005,
-            (Math.random() - 0.5) * 0.005
+            (Math.random() - 0.5) * 0.0025,
+            (Math.random() - 0.5) * 0.0025,
+            (Math.random() - 0.5) * 0.0025
           );
           containerScene.add(instance);
           containers.push(instance);
+        }
+      });
+
+      // Load and scatter uprooted trees
+      const trees = [];
+      gltfLoader.load('gltf/Uprooted_Tree.glb', (gltf) => {
+        console.log('Uprooted_Tree loaded, meshes:', gltf.scene.children.length);
+        const template = gltf.scene;
+        const count = 8;
+        for (let i = 0; i < count; i++) {
+          const [px, py, pz] = findTreePosition(i, count);
+          const instance = template.clone();
+          instance.position.set(px, py, pz);
+          instance.scale.set(3, 3, 3);
+          instance.rotation.set(
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2
+          );
+          instance.userData.tumble = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.0025,
+            (Math.random() - 0.5) * 0.0025,
+            (Math.random() - 0.5) * 0.0025
+          );
+          containerScene.add(instance);
+          trees.push(instance);
+        }
+      });
+
+      function findChevyPosition(index, total) {
+        let px, py, pz, attempts = 0;
+        do {
+          const u = (index + Math.random()) / total;
+          const dist = 10 + Math.cbrt(u) * 40;
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          px = dist * Math.sin(phi) * Math.cos(theta);
+          py = dist * Math.sin(phi) * Math.sin(theta);
+          pz = dist * Math.cos(phi);
+          attempts++;
+        } while (attempts < 50 && placed.some(p => {
+          const dx = px - p[0], dy = py - p[1], dz = pz - p[2];
+          return dx*dx + dy*dy + dz*dz < minSepSq;
+        }));
+        placed.push([px, py, pz]);
+        return [px, py, pz];
+      }
+
+      // Load and scatter 57 Chevys
+      const chevys = [];
+      gltfLoader.load('gltf/57Chevy.glb', (gltf) => {
+        const template = gltf.scene;
+        const count = 10;
+        for (let i = 0; i < count; i++) {
+          const [px, py, pz] = findChevyPosition(i, count);
+          const instance = template.clone();
+          instance.position.set(px, py, pz);
+          instance.scale.set(1, 1, 1);
+          instance.rotation.set(
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2
+          );
+          instance.userData.tumble = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.0025,
+            (Math.random() - 0.5) * 0.0025,
+            (Math.random() - 0.5) * 0.0025
+          );
+          containerScene.add(instance);
+          chevys.push(instance);
         }
       });
 
@@ -207,6 +331,44 @@
         composer.setSize(window.innerWidth, window.innerHeight);
       });
 
+      // Load Dutch (mascot) - orbits close to camera in opposite direction
+      let dutch = null;
+      const dutchOrbitRadius = 5;
+      const dutchLoader = new GLTFLoader();
+      dutchLoader.load('gltf/dutch.glb', (gltf) => {
+        dutch = gltf.scene;
+        dutch.scale.set(0.3, 0.3, 0.3);
+        // Start directly in front of camera
+        dutch.position.set(0, 0, dutchOrbitRadius);
+        dutch.lookAt(camera.position);
+        containerScene.add(dutch);
+      });
+
+      // Click detection for Dutch
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+      let dutchYeeted = false;
+      let dutchYeetDir = null;
+      let dutchTimeOffset = Math.PI;
+      canvas.addEventListener('click', (e) => {
+        if (!dutch || dutchYeeted) return;
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObject(dutch, true);
+        if (hits.length > 0) {
+          dutchYeeted = true;
+          new Audio('sounds/257773__xtrgamr__toy-squeak.wav').play();
+          // Fly away from camera
+          dutchYeetDir = dutch.position.clone().sub(camera.position).normalize();
+          dutch.userData.tumble = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.15,
+            (Math.random() - 0.5) * 0.15,
+            (Math.random() - 0.5) * 0.15
+          );
+        }
+      });
+
       // Random slow rotation direction
       const angle = Math.random() * Math.PI * 2;
       const rotSpeedY = Math.cos(angle) * 0.0005;
@@ -221,6 +383,53 @@
           c.rotation.y += c.userData.tumble.y;
           c.rotation.z += c.userData.tumble.z;
         }
+        for (const t of trees) {
+          t.rotation.x += t.userData.tumble.x;
+          t.rotation.y += t.userData.tumble.y;
+          t.rotation.z += t.userData.tumble.z;
+        }
+        for (const c of chevys) {
+          c.rotation.x += c.userData.tumble.x;
+          c.rotation.y += c.userData.tumble.y;
+          c.rotation.z += c.userData.tumble.z;
+        }
+        // Dutch animation
+        if (dutch) {
+          if (dutchYeeted) {
+            // Fly away tumbling
+            dutch.position.addScaledVector(dutchYeetDir, 0.8);
+            dutch.rotation.x += dutch.userData.tumble.x;
+            dutch.rotation.y += dutch.userData.tumble.y;
+            dutch.rotation.z += dutch.userData.tumble.z;
+            // Warp back behind camera when far enough
+            if (dutch.position.distanceTo(camera.position) > 300) {
+              dutchYeeted = false;
+              dutchYeetDir = null;
+              // Offset time so orbit resumes behind camera (half orbit = PI)
+              const currentT = Date.now() * 0.0001;
+              const behindT = Math.atan2(camera.position.x, camera.position.z) + Math.PI;
+              dutchTimeOffset = behindT - (-currentT);
+            }
+          } else {
+            const t = Date.now() * 0.0001 + dutchTimeOffset;
+            dutch.position.set(
+              Math.cos(-t) * dutchOrbitRadius,
+              Math.sin(t * 0.7) * 3,
+              Math.sin(-t) * dutchOrbitRadius
+            );
+            // Face camera (upright), then apply gentle wobble
+            dutch.up.set(0, 1, 0);
+            dutch.lookAt(camera.position);
+            dutch.rotation.x = 0;
+            dutch.rotation.z = 0;
+            const yaw = Math.sin(t * 0.9) * (Math.PI / 4);
+            const pitch = Math.sin(t * 1.3) * (Math.PI / 14);
+            const roll = Math.sin(t * 1.7) * (Math.PI / 14);
+            dutch.rotateY(yaw);
+            dutch.rotateX(pitch);
+            dutch.rotateZ(roll);
+          }
+        }
         huePass.uniforms.uHue.value = (Date.now() * 0.00002) % 1.0;
         renderer.clear();
         composer.render();
@@ -232,15 +441,41 @@
     <script>
       (async function() {
         const titleCanvas = document.getElementById('bmf-title');
-
         const titleR = new BMFRenderer(titleCanvas);
         await titleR.loadFont('fonts/Quaked.bmf');
 
+        // Glitch font pool - wide variety of fonts
+        const glitchFontNames = [
+          'Authorized', 'BowAndArrow', 'Cabaret', 'Cage', 'CannonFire_Open',
+          'Chest_Burster_Bold', 'Cinema', 'Compression_Square', 'Conapt', 'Cushion',
+          'Deaf_Metal', 'Deaf_Metal_2020', 'District_Comic', 'District_Digital_Bold',
+          'District_Outline', 'Egyptian_Mercy_Bold', 'Emmaline_Open', 'Envious_Italic',
+          'Firebird', 'Flick', 'Forgotten', 'Founded_Clean', 'Fountain',
+          'Franopix_Heavy', 'Fusion_Drive_Bold', 'Golden_Air_SemiBold', 'Inkscript_Bold',
+          'Invitation_Sans', 'Invitation_Serif', 'IoBus', 'Isofell', 'Kindness',
+          'Lander', 'Lapse_Condensed_Semi_Bold', 'Mach4_Wide', 'Magic5_Bold',
+          'Marais', 'Mutual', 'Needlecast_Heavy', 'Nibbles_Bold', 'Nicety_Bold',
+          'No_Step_Lower', 'Panda', 'Pixharmonix', 'Plotter', 'Polaris',
+          'Precinct_0', 'Precinct_0_Tiny', 'Prism_Simplified', 'Pristine',
+          'Pristine_Decay', 'Proforma_Mid_Numeric', 'Protractor', 'Quickshot',
+          'Raven_Bold', 'Reactor_Oblique', 'Reward', 'Scribe_Bold',
+          'Scribe_Condensed', 'Sector_One', 'Skid_Row', 'SnowBunni',
+          'SnowBunni_Italic', 'Stars', 'Stepper', 'ThinSerif', 'Touch_Down',
+          'Tycho', 'Valley', 'Widget', 'Winterforge', 'You_Squared_Bold',
+          'You_Squared_Wide', 'ZX_Baveuse', 'ZX_OCR-A', 'ZX_Palm_Bold',
+          'ZX_Ramona', 'ZX_System_X3',
+        ];
+        // Load all glitch fonts in parallel (non-blocking, best-effort)
+        await Promise.allSettled(
+          glitchFontNames.map(name => titleR.loadFont(`fonts/${name}.bmf`, name))
+        );
+        // Filter to only successfully loaded fonts
+        const glitchPool = glitchFontNames.filter(name => titleR.fonts[name]);
+
         const shadowOpts = { offsetX: 1, offsetY: 1, color: '#000000' };
 
-        // Title: "CORE64" - scale 12, animated gradient
         const titleText = 'CORE64';
-        const titleOpts = { scaleX: 12, scaleY: 12, shadow: shadowOpts, gradient: {
+        const titleOpts = { scaleX: 16, scaleY: 16, shadow: shadowOpts, gradient: {
           palette: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#00ffff', '#0088ff', '#ff00ff'],
           offset: 0,
         }};
@@ -248,12 +483,157 @@
         titleCanvas.width = titleSize.width;
         titleCanvas.height = titleSize.height;
 
+        // --- HSL helper ---
+        function hslToRgba(h, s, l) {
+          h = ((h % 360) + 360) % 360;
+          s /= 100; l /= 100;
+          const c = (1 - Math.abs(2 * l - 1)) * s;
+          const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+          const m = l - c / 2;
+          let r, g, b;
+          if (h < 60) { r = c; g = x; b = 0; }
+          else if (h < 120) { r = x; g = c; b = 0; }
+          else if (h < 180) { r = 0; g = c; b = x; }
+          else if (h < 240) { r = 0; g = x; b = c; }
+          else if (h < 300) { r = x; g = 0; b = c; }
+          else { r = c; g = 0; b = x; }
+          return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255), 255];
+        }
+
+        // --- Gradient mode state machine ---
+        const RAINBOW_PALETTE = [
+          [255,0,0,255], [255,136,0,255], [255,255,0,255], [0,255,0,255],
+          [0,255,255,255], [0,136,255,255], [255,0,255,255],
+        ];
+
+        const modes = ['rainbow', 'c64raster', 'singlecolor'];
+        let currentMode = 'rainbow';
+        let nextModeTime = Date.now() + 3000 + Math.random() * 5000;
+        let singleColorPalette = null;
+
+        function pickNewMode() {
+          let next;
+          do { next = modes[Math.floor(Math.random() * modes.length)]; } while (next === currentMode);
+          currentMode = next;
+          nextModeTime = Date.now() + 3000 + Math.random() * 5000;
+          // Clear all glitches when switching to rainbow
+          if (currentMode === 'rainbow') {
+            wholeGlitchFont = null;
+            for (let i = 0; i < glitchState.length; i++) glitchState[i] = null;
+          }
+          if (currentMode === 'singlecolor') {
+            // Generate dark-to-bright palette in a random hue
+            const hue = Math.random() * 360;
+            singleColorPalette = [];
+            for (let i = 0; i < 8; i++) {
+              const lightness = 10 + (i / 7) * 70; // 10% to 80%
+              singleColorPalette.push(hslToRgba(hue, 80, lightness));
+            }
+          }
+        }
+
+        function getCurrentPalette() {
+          if (currentMode === 'rainbow') {
+            return RAINBOW_PALETTE;
+          } else if (currentMode === 'c64raster') {
+            // Random color per palette entry each frame - flickery C64 fastloader effect
+            const palette = [];
+            const count = 8;
+            for (let i = 0; i < count; i++) {
+              palette.push(hslToRgba(Math.random() * 360, 70 + Math.random() * 30, 40 + Math.random() * 40));
+            }
+            return palette;
+          } else {
+            return singleColorPalette;
+          }
+        }
+
+        // --- Per-character + whole-word font glitch state ---
+        const glitchState = new Array(titleText.length).fill(null);
+        let wholeGlitchFont = null;
+        let wholeGlitchFrames = 0;
+
+        function updateGlitchState() {
+          if (glitchPool.length === 0 || currentMode === 'rainbow') return;
+          if (Math.random() < 0.008) {
+            if (Math.random() < 0.1) {
+              // Whole word glitch - stays until rainbow
+              wholeGlitchFont = glitchPool[Math.floor(Math.random() * glitchPool.length)];
+            } else {
+              // Single character glitch - stays until rainbow
+              const idx = Math.floor(Math.random() * titleText.length);
+              glitchState[idx] = glitchPool[Math.floor(Math.random() * glitchPool.length)];
+            }
+          }
+        }
+
+        function buildFontOverrides() {
+          if (wholeGlitchFont) return new Array(titleText.length).fill(wholeGlitchFont);
+          let hasAny = false;
+          for (let i = 0; i < titleText.length; i++) {
+            if (glitchState[i]) { hasAny = true; break; }
+          }
+          return hasAny ? glitchState.slice() : null;
+        }
+
+        // --- Animation loop ---
         function animateTitle() {
-          titleOpts.gradient.offset = (Date.now() * 0.003) % 7;
+          // Mode switching
+          if (Date.now() >= nextModeTime) pickNewMode();
+
+          // Update gradient
+          const palette = getCurrentPalette();
+          titleOpts.gradient.palette = palette;
+          titleOpts.gradient.offset = currentMode === 'c64raster'
+            ? 0
+            : (Date.now() * 0.003) % palette.length;
+
+          // Update glitches
+          updateGlitchState();
+          titleOpts.fontOverrides = buildFontOverrides();
+
           titleR.drawText(titleText, 0, 0, titleOpts);
           requestAnimationFrame(animateTitle);
         }
         animateTitle();
+
+        // "PRESS PLAY ON TAPE" button
+        const playCanvas = document.getElementById('bmf-play');
+        const playR = new BMFRenderer(playCanvas);
+        playR.fonts = titleR.fonts;
+        playR.defaultFont = titleR.defaultFont;
+        const playText = 'PRESS PLAY ON TAPE';
+        const playOpts = { scaleX: 4, scaleY: 4, shadow: { offsetX: 1, offsetY: 1, color: '#000000' }, color: '#ffffff' };
+        const playSize = playR.measureText(playText, playOpts);
+        playCanvas.width = playSize.width;
+        playCanvas.height = playSize.height;
+
+        let playPlaying = false;
+        function animatePlay() {
+          if (!playPlaying) {
+            // Smooth fade in/out using sine wave mapped to 0-1 opacity
+            const opacity = (Math.sin(Date.now() * 0.003) + 1) / 2;
+            playCanvas.style.opacity = opacity;
+            playR.clear();
+            playR.drawText(playText, 0, 0, playOpts);
+          }
+          requestAnimationFrame(animatePlay);
+        }
+        animatePlay();
+
+        const audio = new Audio('music/Core64-Title.mp3');
+        playCanvas.addEventListener('click', () => {
+          if (audio.paused) {
+            audio.play();
+            playPlaying = true;
+            playR.clear();
+            playCanvas.style.visibility = 'hidden';
+          }
+        });
+        audio.addEventListener('ended', () => {
+          playPlaying = false;
+          playCanvas.style.visibility = '';
+        });
       })();
     </script>
 
