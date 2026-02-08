@@ -173,7 +173,7 @@
       const gltfLoader = new GLTFLoader();
       gltfLoader.load('gltf/Cargo Container.gltf', (gltf) => {
         const template = gltf.scene;
-        const count = isMobile ? 20 : 60;
+        const count = isMobile ? 30 : 60;
         for (let i = 0; i < count; i++) {
           const [px, py, pz] = findPosition(i, count);
 
@@ -207,7 +207,7 @@
       gltfLoader.load('gltf/Uprooted_Tree.glb', (gltf) => {
         console.log('Uprooted_Tree loaded, meshes:', gltf.scene.children.length);
         const template = gltf.scene;
-        const count = isMobile ? 3 : 8;
+        const count = isMobile ? 5 : 8;
         for (let i = 0; i < count; i++) {
           const [px, py, pz] = findTreePosition(i, count);
           const instance = template.clone();
@@ -251,7 +251,7 @@
       const chevys = [];
       gltfLoader.load('gltf/57Chevy.glb', (gltf) => {
         const template = gltf.scene;
-        const count = isMobile ? 4 : 10;
+        const count = isMobile ? 6 : 10;
         for (let i = 0; i < count; i++) {
           const [px, py, pz] = findChevyPosition(i, count);
           const instance = template.clone();
@@ -433,9 +433,14 @@
             dutch.rotateZ(roll);
           }
         }
-        huePass.uniforms.uHue.value = (Date.now() * 0.00002) % 1.0;
         renderer.clear();
-        composer.render();
+        if (isMobile) {
+          // Skip post-processing on mobile for performance
+          renderer.render(skyScene, camera);
+        } else {
+          huePass.uniforms.uHue.value = (Date.now() * 0.00002) % 1.0;
+          composer.render();
+        }
         renderer.clearDepth();
         renderer.render(containerScene, camera);
       }
