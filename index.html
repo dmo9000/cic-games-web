@@ -96,10 +96,11 @@
       import { OutputPass } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/postprocessing/OutputPass.js';
       import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/loaders/GLTFLoader.js';
 
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const canvas = document.getElementById('skybox-canvas');
       const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setPixelRatio(isMobile ? Math.min(window.devicePixelRatio, 2) : window.devicePixelRatio);
 
       const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
@@ -172,7 +173,7 @@
       const gltfLoader = new GLTFLoader();
       gltfLoader.load('gltf/Cargo Container.gltf', (gltf) => {
         const template = gltf.scene;
-        const count = 60;
+        const count = isMobile ? 20 : 60;
         for (let i = 0; i < count; i++) {
           const [px, py, pz] = findPosition(i, count);
 
@@ -206,7 +207,7 @@
       gltfLoader.load('gltf/Uprooted_Tree.glb', (gltf) => {
         console.log('Uprooted_Tree loaded, meshes:', gltf.scene.children.length);
         const template = gltf.scene;
-        const count = 8;
+        const count = isMobile ? 3 : 8;
         for (let i = 0; i < count; i++) {
           const [px, py, pz] = findTreePosition(i, count);
           const instance = template.clone();
@@ -250,7 +251,7 @@
       const chevys = [];
       gltfLoader.load('gltf/57Chevy.glb', (gltf) => {
         const template = gltf.scene;
-        const count = 10;
+        const count = isMobile ? 4 : 10;
         for (let i = 0; i < count; i++) {
           const [px, py, pz] = findChevyPosition(i, count);
           const instance = template.clone();
@@ -345,6 +346,7 @@
       });
 
       // Click detection for Dutch
+      const squeakSound = new Audio('sounds/257773__xtrgamr__toy-squeak.wav');
       const raycaster = new THREE.Raycaster();
       const mouse = new THREE.Vector2();
       let dutchYeeted = false;
@@ -358,7 +360,8 @@
         const hits = raycaster.intersectObject(dutch, true);
         if (hits.length > 0) {
           dutchYeeted = true;
-          new Audio('sounds/257773__xtrgamr__toy-squeak.wav').play();
+          squeakSound.currentTime = 0;
+          squeakSound.play();
           // Fly away from camera
           dutchYeetDir = dutch.position.clone().sub(camera.position).normalize();
           dutch.userData.tumble = new THREE.Vector3(
