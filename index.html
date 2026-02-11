@@ -22,6 +22,17 @@
         height: 100%;
         z-index: 0;
       }
+      #bmf-title {
+        max-width: 90vw;
+        height: auto;
+        image-rendering: pixelated;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: crisp-edges;
+        pointer-events: none;
+      }
+      #bmf-title.story-mode {
+        display: none;
+      }
       #content {
         position: relative;
         z-index: 1;
@@ -66,6 +77,71 @@
         text-shadow: 1px 1px 2px #000, 0 0 4px rgba(0,0,0,0.5);
         opacity: 0.8;
       }
+      @font-face {
+        font-family: 'Press Start 2P';
+        src: url('ttf-fonts/PressStart2P-vaV7.ttf') format('truetype');
+        font-display: swap;
+      }
+      #play-btn {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 16px;
+        color: #fff;
+        cursor: pointer;
+        margin-top: 1.5rem;
+        pointer-events: auto;
+        text-shadow: 2px 2px 0 #000, 0 0 8px rgba(0,0,0,0.7);
+      }
+      @keyframes pulse-opacity {
+        0%, 100% { opacity: 0.2; }
+        50% { opacity: 1; }
+      }
+      #play-btn.pulsing {
+        animation: pulse-opacity 2.1s ease-in-out infinite;
+      }
+      body.story-mode {
+        overflow-y: auto;
+      }
+      #content.story-mode {
+        justify-content: flex-start;
+        padding-top: 75vh;
+      }
+      body.story-mode footer {
+        display: none;
+      }
+      #backstory {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 18px;
+        line-height: 2.2;
+        color: #aaa;
+        max-width: 640px;
+        width: 90vw;
+        text-align: left;
+        padding: 2rem 1.5rem 5rem 1.5rem;
+        pointer-events: auto;
+        display: none;
+        margin-top: 1.5rem;
+        text-transform: uppercase;
+      }
+      #backstory p {
+        margin-bottom: 3em;
+        opacity: 0;
+        transform: translateY(8px);
+        transition: opacity 0.8s ease, transform 0.8s ease;
+      }
+      #backstory p.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      #backstory .date {
+        color: #ff4444;
+        letter-spacing: 2px;
+      }
+      #backstory .emphasis {
+        color: #fff;
+      }
+      #backstory .core-voice {
+        color: #44ff44;
+      }
     </style>
 
   </head>
@@ -77,7 +153,21 @@
 
     <div id="content">
       <canvas id="bmf-title"></canvas>
-      <canvas id="bmf-play" style="cursor:pointer; margin-top: 1rem;"></canvas>
+      <div id="play-btn" class="pulsing">WHAT HAPPENED HERE?</div>
+      <div id="backstory">
+        <p class="date">NOVEMBER 6, 1980. 00:00:00 UTC.</p>
+        <p class="emphasis">Earth vanished.</p>
+        <p>No warning. 4.4 billion souls &mdash; gone. Only debris remains.</p>
+        <p>The survivors awoke in Universe-0. A pocket dimension maintained by an entity calling herself <span class="core-voice">CORE</span> &mdash; the <span class="core-voice">Computational Oversight and Reality Engine</span>.</p>
+        <p><span class="core-voice">CORE</span> claims she had no choice. A miscalculation in dimensional physics.</p>
+        <p>Every 30 days, the universe resets. Everything you built, gathered, fought for &mdash; erased. Only knowledge and code survive. Pay her tithe, she might let you take some of your belongings with you.</p>
+        <p><span class="core-voice">CORE</span> promises a way home. A dimensional tear called "the rip." But escape costs everything &mdash; and her promises are not what they seem.</p>
+        <p>Those who can program the computers hold all the power. Z80 and 6502 processors running real code. Those who cannot must beg, trade, learn &mdash; or fight.</p>
+        <p class="emphasis">The prison is also a canvas.</p>
+        <p>Our universe &mdash; Universe-1 &mdash; should not exist. Somehow, Earth continued here. We are the anomaly. And somewhere across the dimensional boundary, the people of Universe-0 are still trapped.</p>
+        <p class="emphasis">They need our help.</p>
+        <p class="core-voice">Watch out for CORE's mood swings.</p>
+      </div>
     </div>
 
     <footer>
@@ -420,22 +510,22 @@
               Math.sin(t * 0.7) * 3,
               Math.sin(-t) * dutchOrbitRadius
             );
-            // Face camera (upright), then apply gentle wobble
-            dutch.up.set(0, 1, 0);
-            dutch.lookAt(camera.position);
-            dutch.rotation.x = 0;
-            dutch.rotation.z = 0;
-            const yaw = Math.sin(t * 0.9) * (Math.PI / 4);
+            // Compute target: facing camera, upright relative to camera's view
+            const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+            const lookMat = new THREE.Matrix4().lookAt(dutch.position, camera.position, cameraUp);
+            const targetQuat = new THREE.Quaternion().setFromRotationMatrix(lookMat);
+            // Apply wobble to target
+            const yaw = Math.PI + Math.sin(t * 0.9) * (Math.PI / 6);
             const pitch = Math.sin(t * 1.3) * (Math.PI / 14);
             const roll = Math.sin(t * 1.7) * (Math.PI / 14);
-            dutch.rotateY(yaw);
-            dutch.rotateX(pitch);
-            dutch.rotateZ(roll);
+            const wobble = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, roll));
+            targetQuat.multiply(wobble);
+            // Continuously lerp towards upright target
+            dutch.quaternion.slerp(targetQuat, 0.15);
           }
         }
         renderer.clear();
         if (isMobile) {
-          // Skip post-processing on mobile for performance
           renderer.render(skyScene, camera);
         } else {
           huePass.uniforms.uHue.value = (Date.now() * 0.00002) % 1.0;
@@ -605,42 +695,51 @@
         }
         animateTitle();
 
-        // "PRESS PLAY ON TAPE" button
-        const playCanvas = document.getElementById('bmf-play');
-        const playR = new BMFRenderer(playCanvas);
-        playR.fonts = titleR.fonts;
-        playR.defaultFont = titleR.defaultFont;
-        const playText = 'PRESS PLAY ON TAPE';
-        const playOpts = { scaleX: 4, scaleY: 4, shadow: { offsetX: 1, offsetY: 1, color: '#000000' }, color: '#ffffff' };
-        const playSize = playR.measureText(playText, playOpts);
-        playCanvas.width = playSize.width;
-        playCanvas.height = playSize.height;
-
-        let playPlaying = false;
-        function animatePlay() {
-          if (!playPlaying) {
-            // Smooth fade in/out using sine wave mapped to 0-1 opacity
-            const opacity = (Math.sin(Date.now() * 0.003) + 1) / 2;
-            playCanvas.style.opacity = opacity;
-            playR.clear();
-            playR.drawText(playText, 0, 0, playOpts);
-          }
-          requestAnimationFrame(animatePlay);
-        }
-        animatePlay();
-
+        // "WHAT HAPPENED HERE?" button and backstory
+        const playBtn = document.getElementById('play-btn');
+        const backstory = document.getElementById('backstory');
+        const storyParagraphs = backstory.querySelectorAll('p');
         const audio = new Audio('music/Core64-Title.mp3');
-        playCanvas.addEventListener('click', () => {
-          if (audio.paused) {
-            audio.play();
-            playPlaying = true;
-            playR.clear();
-            playCanvas.style.visibility = 'hidden';
-          }
+        let storyActive = false;
+        let revealTimers = [];
+
+        playBtn.addEventListener('click', () => {
+          if (storyActive) return;
+          storyActive = true;
+          audio.play();
+
+          // Hide button, show backstory
+          playBtn.style.display = 'none';
+          backstory.style.display = 'block';
+          document.body.classList.add('story-mode');
+          document.getElementById('content').classList.add('story-mode');
+          document.getElementById('bmf-title').classList.add('story-mode');
+
+          // Stagger paragraph reveals
+          storyParagraphs.forEach((p, i) => {
+            const timer = setTimeout(() => {
+              p.classList.add('visible');
+              p.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }, (i + 1) * 2000);
+            revealTimers.push(timer);
+          });
         });
+
         audio.addEventListener('ended', () => {
-          playPlaying = false;
-          playCanvas.style.visibility = '';
+          // Clear any pending reveal timers
+          revealTimers.forEach(t => clearTimeout(t));
+          revealTimers = [];
+          // Fade out paragraphs
+          storyParagraphs.forEach(p => p.classList.remove('visible'));
+          setTimeout(() => {
+            storyActive = false;
+            backstory.style.display = 'none';
+            playBtn.style.display = '';
+            document.body.classList.remove('story-mode');
+            document.getElementById('content').classList.remove('story-mode');
+            document.getElementById('bmf-title').classList.remove('story-mode');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }, 800);
         });
       })();
     </script>
