@@ -429,9 +429,20 @@
       dutchLoader.load('gltf/dutch.glb', (gltf) => {
         dutch = gltf.scene;
         dutch.scale.set(0.3, 0.3, 0.3);
-        // Start directly in front of camera
-        dutch.position.set(0, 0, dutchOrbitRadius);
-        dutch.lookAt(camera.position);
+        // Start behind camera
+        const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+        const behindAngle = Math.atan2(backward.x, backward.z);
+        dutchTimeOffset = -behindAngle - Date.now() * 0.0001;
+        dutch.position.set(
+          Math.cos(behindAngle) * dutchOrbitRadius,
+          0,
+          Math.sin(behindAngle) * dutchOrbitRadius
+        );
+        const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+        const lookMat = new THREE.Matrix4().lookAt(dutch.position, camera.position, cameraUp);
+        const q = new THREE.Quaternion().setFromRotationMatrix(lookMat);
+        q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0)));
+        dutch.quaternion.copy(q);
         containerScene.add(dutch);
       });
 
@@ -467,6 +478,42 @@
       const rotSpeedY = Math.cos(angle) * 0.0005;
       const rotSpeedX = Math.sin(angle) * 0.0005;
 
+      // Dutch story mode handling
+      let dutchHidden = false;
+      window.addEventListener('story-start', () => {
+        if (!dutch) return;
+        dutchHidden = true;
+        if (!dutchYeeted) {
+          dutchYeeted = true;
+          dutchYeetDir = dutch.position.clone().sub(camera.position).normalize();
+          dutch.userData.tumble = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.15,
+            (Math.random() - 0.5) * 0.15,
+            (Math.random() - 0.5) * 0.15
+          );
+        }
+      });
+      window.addEventListener('story-end', () => {
+        if (!dutch) return;
+        dutchHidden = false;
+        dutchYeeted = false;
+        dutchYeetDir = null;
+        // Place behind camera
+        const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+        const behindAngle = Math.atan2(backward.x, backward.z);
+        dutchTimeOffset = -behindAngle - Date.now() * 0.0001;
+        dutch.position.set(
+          Math.cos(behindAngle) * dutchOrbitRadius,
+          0,
+          Math.sin(behindAngle) * dutchOrbitRadius
+        );
+        const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+        const lookMat = new THREE.Matrix4().lookAt(dutch.position, camera.position, cameraUp);
+        const q = new THREE.Quaternion().setFromRotationMatrix(lookMat);
+        q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0)));
+        dutch.quaternion.copy(q);
+      });
+
       function animate() {
         requestAnimationFrame(animate);
         camera.rotation.y += rotSpeedY;
@@ -486,7 +533,7 @@
           c.rotation.y += c.userData.tumble.y;
           c.rotation.z += c.userData.tumble.z;
         }
-        // Dutch animation
+
         if (dutch) {
           if (dutchYeeted) {
             // Fly away tumbling
@@ -495,13 +542,24 @@
             dutch.rotation.y += dutch.userData.tumble.y;
             dutch.rotation.z += dutch.userData.tumble.z;
             // Warp back behind camera when far enough
-            if (dutch.position.distanceTo(camera.position) > 300) {
+            if (dutch.position.distanceTo(camera.position) > 600 && !dutchHidden) {
               dutchYeeted = false;
               dutchYeetDir = null;
-              // Offset time so orbit resumes behind camera (half orbit = PI)
-              const currentT = Date.now() * 0.0001;
-              const behindT = Math.atan2(camera.position.x, camera.position.z) + Math.PI;
-              dutchTimeOffset = behindT - (-currentT);
+              // Place behind camera using camera's facing direction
+              const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+              const behindAngle = Math.atan2(backward.x, backward.z);
+              dutchTimeOffset = -behindAngle - Date.now() * 0.0001;
+              // Snap position and orientation immediately
+              dutch.position.set(
+                Math.cos(behindAngle) * dutchOrbitRadius,
+                0,
+                Math.sin(behindAngle) * dutchOrbitRadius
+              );
+              const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+              const lookMat = new THREE.Matrix4().lookAt(dutch.position, camera.position, cameraUp);
+              const q = new THREE.Quaternion().setFromRotationMatrix(lookMat);
+              q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0)));
+              dutch.quaternion.copy(q);
             }
           } else {
             const t = Date.now() * 0.0001 + dutchTimeOffset;
@@ -708,7 +766,8 @@
           storyActive = true;
           audio.play();
 
-          // Hide button, show backstory
+          // Yeet Dutch and hide button, show backstory
+          window.dispatchEvent(new Event('story-start'));
           playBtn.style.display = 'none';
           backstory.style.display = 'block';
           document.body.classList.add('story-mode');
@@ -739,6 +798,7 @@
             document.getElementById('content').classList.remove('story-mode');
             document.getElementById('bmf-title').classList.remove('story-mode');
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.dispatchEvent(new Event('story-end'));
           }, 800);
         });
       })();
