@@ -98,13 +98,15 @@
       #play-btn.pulsing {
         animation: pulse-opacity 2.1s ease-in-out infinite;
       }
-      body.story-mode {
-        overflow-y: auto;
+      html {
         scrollbar-width: none;
         -ms-overflow-style: none;
       }
-      body.story-mode::-webkit-scrollbar {
+      html::-webkit-scrollbar {
         display: none;
+      }
+      body.story-mode {
+        overflow-y: auto;
       }
       #content.story-mode {
         justify-content: flex-start;
@@ -792,15 +794,17 @@
           // Smooth continuous auto-scroll synced to music duration
           const startScroll = () => {
             const duration = audio.duration || 60;
-            const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-            const pixelsPerSecond = totalHeight / duration;
             let lastTime = performance.now();
 
             function scrollStep(now) {
               if (!storyActive) return;
               const dt = (now - lastTime) / 1000;
               lastTime = now;
-              window.scrollBy(0, pixelsPerSecond * dt);
+              const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+              if (totalHeight > 0) {
+                const pixelsPerSecond = totalHeight / duration;
+                window.scrollBy(0, pixelsPerSecond * dt);
+              }
               scrollRAF = requestAnimationFrame(scrollStep);
             }
             scrollRAF = requestAnimationFrame(scrollStep);
