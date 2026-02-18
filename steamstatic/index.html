@@ -316,18 +316,36 @@
         composer.setSize(window.innerWidth, window.innerHeight);
       });
 
-      // Load Dutch (mascot) - parked near the logo, facing camera
+      // Load Dutch (mascot) - rising up from behind centre of logo, facing camera
       const dutchLoader = new GLTFLoader();
       dutchLoader.load('../gltf/dutch.glb', (gltf) => {
         const dutch = gltf.scene;
         dutch.scale.set(0.3, 0.3, 0.3);
-        // Position in front of camera, slightly right and below centre
-        dutch.position.set(2.5, -1.5, -5);
+        // Centred, above the logo, slightly further back
+        dutch.position.set(0, 2.5, -6);
         // Face the camera
         const lookMat = new THREE.Matrix4().lookAt(dutch.position, camera.position, new THREE.Vector3(0, 1, 0));
         const q = new THREE.Quaternion().setFromRotationMatrix(lookMat);
         q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0)));
         dutch.quaternion.copy(q);
+        // Fresnel rim light - cool blue edge glow
+        dutch.traverse((child) => {
+          if (child.isMesh) {
+            child.material = child.material.clone();
+            child.material.onBeforeCompile = (shader) => {
+              shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <output_fragment>',
+                `
+                // Fresnel rim light
+                vec3 rimViewDir = normalize(vViewPosition);
+                float rimFresnel = pow(1.0 - abs(dot(normal, -rimViewDir)), 3.0);
+                outgoingLight += vec3(0.4, 0.6, 1.0) * rimFresnel * 0.8;
+                #include <output_fragment>
+                `
+              );
+            };
+          }
+        });
         containerScene.add(dutch);
       });
 
