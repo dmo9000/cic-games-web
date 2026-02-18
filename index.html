@@ -98,15 +98,8 @@
       #play-btn.pulsing {
         animation: pulse-opacity 2.1s ease-in-out infinite;
       }
-      html {
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-      }
-      html::-webkit-scrollbar {
-        display: none;
-      }
       body.story-mode {
-        overflow-y: auto;
+        overflow: hidden;
       }
       #content.story-mode {
         justify-content: flex-start;
@@ -769,10 +762,22 @@
         let revealTimers = [];
 
         let scrollRAF = null;
+        let scrollOffset = 0;
+        const contentEl = document.getElementById('content');
+
+        // Block all manual scrolling during story mode
+        const blockScroll = (e) => { if (storyActive) e.preventDefault(); };
+        const blockScrollKeys = (e) => {
+          if (storyActive && [32, 33, 34, 35, 36, 37, 38, 39, 40].includes(e.keyCode)) e.preventDefault();
+        };
+        window.addEventListener('wheel', blockScroll, { passive: false });
+        window.addEventListener('touchmove', blockScroll, { passive: false });
+        window.addEventListener('keydown', blockScrollKeys);
 
         playBtn.addEventListener('click', () => {
           if (storyActive) return;
           storyActive = true;
+          scrollOffset = 0;
           audio.play();
 
           // Yeet Dutch and hide button, show backstory
@@ -780,10 +785,10 @@
           playBtn.style.display = 'none';
           backstory.style.display = 'block';
           document.body.classList.add('story-mode');
-          document.getElementById('content').classList.add('story-mode');
+          contentEl.classList.add('story-mode');
           document.getElementById('bmf-title').classList.add('story-mode');
 
-          // Stagger paragraph reveals (keep fade-in, no scroll hijack)
+          // Stagger paragraph reveals
           storyParagraphs.forEach((p, i) => {
             const timer = setTimeout(() => {
               p.classList.add('visible');
@@ -791,7 +796,7 @@
             revealTimers.push(timer);
           });
 
-          // Smooth continuous auto-scroll synced to music duration
+          // Smooth continuous auto-scroll via transform
           const startScroll = () => {
             const duration = audio.duration || 60;
             let lastTime = performance.now();
@@ -800,10 +805,11 @@
               if (!storyActive) return;
               const dt = (now - lastTime) / 1000;
               lastTime = now;
-              const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-              if (totalHeight > 0) {
-                const pixelsPerSecond = totalHeight / duration;
-                window.scrollBy(0, pixelsPerSecond * dt);
+              const totalDistance = contentEl.scrollHeight - window.innerHeight;
+              if (totalDistance > 0) {
+                const speed = totalDistance / duration;
+                scrollOffset = Math.min(scrollOffset + speed * dt, totalDistance);
+                contentEl.style.transform = `translateY(-${scrollOffset}px)`;
               }
               scrollRAF = requestAnimationFrame(scrollStep);
             }
@@ -830,9 +836,9 @@
             backstory.style.display = 'none';
             playBtn.style.display = '';
             document.body.classList.remove('story-mode');
-            document.getElementById('content').classList.remove('story-mode');
+            contentEl.classList.remove('story-mode');
+            contentEl.style.transform = '';
             document.getElementById('bmf-title').classList.remove('story-mode');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
             window.dispatchEvent(new Event('story-end'));
           }, 800);
         });
