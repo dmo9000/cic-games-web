@@ -155,7 +155,7 @@
       lastTime = now;
       const totalDistance = content.scrollHeight - window.innerHeight;
       if (totalDistance > 0) {
-        const speed = totalDistance / 90;
+        const speed = totalDistance / 30;
         offset = Math.min(offset + speed * dt, totalDistance);
         content.style.transform = `translateY(-${offset}px)`;
       }
