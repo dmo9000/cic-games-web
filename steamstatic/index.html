@@ -316,67 +316,24 @@
         composer.setSize(window.innerWidth, window.innerHeight);
       });
 
-      // Load Dutch (mascot) - orbits close to camera
-      let dutch = null;
-      const dutchOrbitRadius = 5;
+      // Load Dutch (mascot) - parked near the logo, facing camera
       const dutchLoader = new GLTFLoader();
       dutchLoader.load('../gltf/dutch.glb', (gltf) => {
-        dutch = gltf.scene;
+        const dutch = gltf.scene;
         dutch.scale.set(0.3, 0.3, 0.3);
-        const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
-        const behindAngle = Math.atan2(backward.x, backward.z);
-        dutchTimeOffset = -behindAngle - Date.now() * 0.0001;
-        dutch.position.set(
-          Math.cos(behindAngle) * dutchOrbitRadius,
-          0,
-          Math.sin(behindAngle) * dutchOrbitRadius
-        );
-        const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
-        const lookMat = new THREE.Matrix4().lookAt(dutch.position, camera.position, cameraUp);
+        // Position in front of camera, slightly right and below centre
+        dutch.position.set(2.5, -1.5, -5);
+        // Face the camera
+        const lookMat = new THREE.Matrix4().lookAt(dutch.position, camera.position, new THREE.Vector3(0, 1, 0));
         const q = new THREE.Quaternion().setFromRotationMatrix(lookMat);
         q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0)));
         dutch.quaternion.copy(q);
         containerScene.add(dutch);
       });
 
-      let dutchTimeOffset = Math.PI;
-
       function animate() {
         requestAnimationFrame(animate);
-        // No camera rotation - static for screenshots
-        for (const c of containers) {
-          c.rotation.x += c.userData.tumble.x;
-          c.rotation.y += c.userData.tumble.y;
-          c.rotation.z += c.userData.tumble.z;
-        }
-        for (const t of trees) {
-          t.rotation.x += t.userData.tumble.x;
-          t.rotation.y += t.userData.tumble.y;
-          t.rotation.z += t.userData.tumble.z;
-        }
-        for (const c of chevys) {
-          c.rotation.x += c.userData.tumble.x;
-          c.rotation.y += c.userData.tumble.y;
-          c.rotation.z += c.userData.tumble.z;
-        }
-
-        if (dutch) {
-          const t = Date.now() * 0.0001 + dutchTimeOffset;
-          dutch.position.set(
-            Math.cos(-t) * dutchOrbitRadius,
-            Math.sin(t * 0.7) * 3,
-            Math.sin(-t) * dutchOrbitRadius
-          );
-          const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
-          const lookMat = new THREE.Matrix4().lookAt(dutch.position, camera.position, cameraUp);
-          const targetQuat = new THREE.Quaternion().setFromRotationMatrix(lookMat);
-          const yaw = Math.PI + Math.sin(t * 0.9) * (Math.PI / 6);
-          const pitch = Math.sin(t * 1.3) * (Math.PI / 14);
-          const roll = Math.sin(t * 1.7) * (Math.PI / 14);
-          const wobble = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, roll));
-          targetQuat.multiply(wobble);
-          dutch.quaternion.slerp(targetQuat, 0.15);
-        }
+        // Everything static for screenshots - no rotation, no tumbling
         renderer.clear();
         if (isMobile) {
           renderer.render(skyScene, camera);
@@ -395,34 +352,7 @@
         const titleR = new BMFRenderer(titleCanvas);
         await titleR.loadFont('../fonts/Quaked.bmf');
 
-        // Glitch font pool
-        const glitchFontNames = [
-          'Authorized', 'BowAndArrow', 'Cabaret', 'Cage', 'CannonFire_Open',
-          'Chest_Burster_Bold', 'Cinema', 'Compression_Square', 'Conapt', 'Cushion',
-          'Deaf_Metal', 'Deaf_Metal_2020', 'District_Comic', 'District_Digital_Bold',
-          'District_Outline', 'Egyptian_Mercy_Bold', 'Emmaline_Open', 'Envious_Italic',
-          'Firebird', 'Flick', 'Forgotten', 'Founded_Clean', 'Fountain',
-          'Franopix_Heavy', 'Fusion_Drive_Bold', 'Golden_Air_SemiBold', 'Inkscript_Bold',
-          'Invitation_Sans', 'Invitation_Serif', 'IoBus', 'Isofell', 'Kindness',
-          'Lander', 'Lapse_Condensed_Semi_Bold', 'Mach4_Wide', 'Magic5_Bold',
-          'Marais', 'Mutual', 'Needlecast_Heavy', 'Nibbles_Bold', 'Nicety_Bold',
-          'No_Step_Lower', 'Panda', 'Pixharmonix', 'Plotter', 'Polaris',
-          'Precinct_0', 'Precinct_0_Tiny', 'Prism_Simplified', 'Pristine',
-          'Pristine_Decay', 'Proforma_Mid_Numeric', 'Protractor', 'Quickshot',
-          'Raven_Bold', 'Reactor_Oblique', 'Reward', 'Scribe_Bold',
-          'Scribe_Condensed', 'Sector_One', 'Skid_Row', 'SnowBunni',
-          'SnowBunni_Italic', 'Stars', 'Stepper', 'ThinSerif', 'Touch_Down',
-          'Tycho', 'Valley', 'Widget', 'Winterforge', 'You_Squared_Bold',
-          'You_Squared_Wide', 'ZX_Baveuse', 'ZX_OCR-A', 'ZX_Palm_Bold',
-          'ZX_Ramona', 'ZX_System_X3',
-        ];
-        await Promise.allSettled(
-          glitchFontNames.map(name => titleR.loadFont(`../fonts/${name}.bmf`, name))
-        );
-        const glitchPool = glitchFontNames.filter(name => titleR.fonts[name]);
-
         const shadowOpts = { offsetX: 1, offsetY: 1, color: '#000000' };
-
         const titleText = 'CORE64';
         const titleOpts = { scaleX: 16, scaleY: 16, shadow: shadowOpts, gradient: {
           palette: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#00ffff', '#0088ff', '#ff00ff'],
@@ -432,106 +362,9 @@
         titleCanvas.width = titleSize.width;
         titleCanvas.height = titleSize.height;
 
-        // --- HSL helper ---
-        function hslToRgba(h, s, l) {
-          h = ((h % 360) + 360) % 360;
-          s /= 100; l /= 100;
-          const c = (1 - Math.abs(2 * l - 1)) * s;
-          const x = c * (1 - Math.abs((h / 60) % 2 - 1));
-          const m = l - c / 2;
-          let r, g, b;
-          if (h < 60) { r = c; g = x; b = 0; }
-          else if (h < 120) { r = x; g = c; b = 0; }
-          else if (h < 180) { r = 0; g = c; b = x; }
-          else if (h < 240) { r = 0; g = x; b = c; }
-          else if (h < 300) { r = x; g = 0; b = c; }
-          else { r = c; g = 0; b = x; }
-          return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255), 255];
-        }
-
-        // --- Gradient mode state machine ---
-        const RAINBOW_PALETTE = [
-          [255,0,0,255], [255,136,0,255], [255,255,0,255], [0,255,0,255],
-          [0,255,255,255], [0,136,255,255], [255,0,255,255],
-        ];
-
-        const modes = ['rainbow', 'c64raster', 'singlecolor'];
-        let currentMode = 'rainbow';
-        let nextModeTime = Date.now() + 3000 + Math.random() * 5000;
-        let singleColorPalette = null;
-
-        function pickNewMode() {
-          let next;
-          do { next = modes[Math.floor(Math.random() * modes.length)]; } while (next === currentMode);
-          currentMode = next;
-          nextModeTime = Date.now() + 3000 + Math.random() * 5000;
-          if (currentMode !== 'c64raster') {
-            wholeGlitchFont = null;
-            for (let i = 0; i < glitchState.length; i++) glitchState[i] = null;
-          }
-          if (currentMode === 'singlecolor') {
-            const hue = Math.random() * 360;
-            singleColorPalette = [];
-            for (let i = 0; i < 8; i++) {
-              const lightness = 10 + (i / 7) * 70;
-              singleColorPalette.push(hslToRgba(hue, 80, lightness));
-            }
-          }
-        }
-
-        function getCurrentPalette() {
-          if (currentMode === 'rainbow') {
-            return RAINBOW_PALETTE;
-          } else if (currentMode === 'c64raster') {
-            const palette = [];
-            const count = 8;
-            for (let i = 0; i < count; i++) {
-              palette.push(hslToRgba(Math.random() * 360, 70 + Math.random() * 30, 40 + Math.random() * 40));
-            }
-            return palette;
-          } else {
-            return singleColorPalette;
-          }
-        }
-
-        // --- Per-character + whole-word font glitch state ---
-        const glitchState = new Array(titleText.length).fill(null);
-        let wholeGlitchFont = null;
-
-        function updateGlitchState() {
-          if (glitchPool.length === 0 || currentMode !== 'c64raster') return;
-          if (Math.random() < 0.008) {
-            if (Math.random() < 0.1) {
-              wholeGlitchFont = glitchPool[Math.floor(Math.random() * glitchPool.length)];
-            } else {
-              const idx = Math.floor(Math.random() * titleText.length);
-              glitchState[idx] = glitchPool[Math.floor(Math.random() * glitchPool.length)];
-            }
-          }
-        }
-
-        function buildFontOverrides() {
-          if (wholeGlitchFont) return new Array(titleText.length).fill(wholeGlitchFont);
-          let hasAny = false;
-          for (let i = 0; i < titleText.length; i++) {
-            if (glitchState[i]) { hasAny = true; break; }
-          }
-          return hasAny ? glitchState.slice() : null;
-        }
-
-        // --- Animation loop ---
+        // Static rainbow - gentle scrolling gradient, no glitches
         function animateTitle() {
-          if (Date.now() >= nextModeTime) pickNewMode();
-
-          const palette = getCurrentPalette();
-          titleOpts.gradient.palette = palette;
-          titleOpts.gradient.offset = currentMode === 'c64raster'
-            ? 0
-            : (Date.now() * 0.003) % palette.length;
-
-          updateGlitchState();
-          titleOpts.fontOverrides = buildFontOverrides();
-
+          titleOpts.gradient.offset = (Date.now() * 0.003) % titleOpts.gradient.palette.length;
           titleR.drawText(titleText, 0, 0, titleOpts);
           requestAnimationFrame(animateTitle);
         }
