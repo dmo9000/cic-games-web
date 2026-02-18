@@ -100,6 +100,11 @@
       }
       body.story-mode {
         overflow-y: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      body.story-mode::-webkit-scrollbar {
+        display: none;
       }
       #content.story-mode {
         justify-content: flex-start;
@@ -761,6 +766,8 @@
         let storyActive = false;
         let revealTimers = [];
 
+        let scrollRAF = null;
+
         playBtn.addEventListener('click', () => {
           if (storyActive) return;
           storyActive = true;
@@ -774,17 +781,41 @@
           document.getElementById('content').classList.add('story-mode');
           document.getElementById('bmf-title').classList.add('story-mode');
 
-          // Stagger paragraph reveals
+          // Stagger paragraph reveals (keep fade-in, no scroll hijack)
           storyParagraphs.forEach((p, i) => {
             const timer = setTimeout(() => {
               p.classList.add('visible');
-              p.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }, (i + 1) * 2000);
             revealTimers.push(timer);
           });
+
+          // Smooth continuous auto-scroll synced to music duration
+          const startScroll = () => {
+            const duration = audio.duration || 60;
+            const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const pixelsPerSecond = totalHeight / duration;
+            let lastTime = performance.now();
+
+            function scrollStep(now) {
+              if (!storyActive) return;
+              const dt = (now - lastTime) / 1000;
+              lastTime = now;
+              window.scrollBy(0, pixelsPerSecond * dt);
+              scrollRAF = requestAnimationFrame(scrollStep);
+            }
+            scrollRAF = requestAnimationFrame(scrollStep);
+          };
+
+          if (audio.readyState >= 1) {
+            startScroll();
+          } else {
+            audio.addEventListener('loadedmetadata', startScroll, { once: true });
+          }
         });
 
         audio.addEventListener('ended', () => {
+          // Stop auto-scroll
+          if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = null; }
           // Clear any pending reveal timers
           revealTimers.forEach(t => clearTimeout(t));
           revealTimers = [];
