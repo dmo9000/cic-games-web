@@ -321,31 +321,13 @@
       dutchLoader.load('../gltf/dutch.glb', (gltf) => {
         const dutch = gltf.scene;
         dutch.scale.set(0.3, 0.3, 0.3);
-        // Centred, above the logo, slightly further back
-        dutch.position.set(0, 2.5, -6);
+        // Centred, just above the logo, slightly further back
+        dutch.position.set(0, 0.8, -6);
         // Face the camera
         const lookMat = new THREE.Matrix4().lookAt(dutch.position, camera.position, new THREE.Vector3(0, 1, 0));
         const q = new THREE.Quaternion().setFromRotationMatrix(lookMat);
         q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0)));
         dutch.quaternion.copy(q);
-        // Fresnel rim light - cool blue edge glow
-        dutch.traverse((child) => {
-          if (child.isMesh) {
-            child.material = child.material.clone();
-            child.material.onBeforeCompile = (shader) => {
-              shader.fragmentShader = shader.fragmentShader.replace(
-                '#include <output_fragment>',
-                `
-                // Fresnel rim light
-                vec3 rimViewDir = normalize(vViewPosition);
-                float rimFresnel = pow(1.0 - abs(dot(normal, -rimViewDir)), 3.0);
-                outgoingLight += vec3(0.4, 0.6, 1.0) * rimFresnel * 0.8;
-                #include <output_fragment>
-                `
-              );
-            };
-          }
-        });
         containerScene.add(dutch);
       });
 
@@ -380,13 +362,8 @@
         titleCanvas.width = titleSize.width;
         titleCanvas.height = titleSize.height;
 
-        // Static rainbow - gentle scrolling gradient, no glitches
-        function animateTitle() {
-          titleOpts.gradient.offset = (Date.now() * 0.003) % titleOpts.gradient.palette.length;
-          titleR.drawText(titleText, 0, 0, titleOpts);
-          requestAnimationFrame(animateTitle);
-        }
-        animateTitle();
+        // Static rainbow - single render, no animation
+        titleR.drawText(titleText, 0, 0, titleOpts);
       })();
     </script>
 
