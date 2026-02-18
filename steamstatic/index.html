@@ -322,7 +322,7 @@
         const dutch = gltf.scene;
         dutch.scale.set(0.3, 0.3, 0.3);
         // Centred, just above the logo, slightly further back
-        dutch.position.set(0, 0.4, -6);
+        dutch.position.set(0, 0.25, -6);
         // Face the camera
         const lookMat = new THREE.Matrix4().lookAt(dutch.position, camera.position, new THREE.Vector3(0, 1, 0));
         const q = new THREE.Quaternion().setFromRotationMatrix(lookMat);
