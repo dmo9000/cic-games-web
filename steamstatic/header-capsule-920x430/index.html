@@ -4,7 +4,7 @@
 
   <head>
 
-    <title>CORE64 - Steam Capsule</title>
+    <title>CORE64 - Header Capsule 920x430</title>
     <meta name="format-detection" content="telephone=no">
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -53,7 +53,7 @@
       }
       @font-face {
         font-family: 'Press Start 2P';
-        src: url('../ttf-fonts/PressStart2P-vaV7.ttf') format('truetype');
+        src: url('../../ttf-fonts/PressStart2P-vaV7.ttf') format('truetype');
         font-display: swap;
       }
     </style>
@@ -69,7 +69,7 @@
       <canvas id="bmf-title"></canvas>
     </div>
 
-    <script src="../bmf.js"></script>
+    <script src="../../bmf.js"></script>
     <script type="importmap">
       { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
     </script>
@@ -92,7 +92,7 @@
       // Skybox scene (hue shifted)
       const skyScene = new THREE.Scene();
       const loader = new THREE.CubeTextureLoader();
-      loader.setPath('../images/');
+      loader.setPath('../../images/');
       const textureCube = loader.load([
         'right.jpg', 'left.jpg',
         'top.jpg', 'bottom.jpg',
@@ -156,7 +156,7 @@
       // Load and scatter shipping containers
       const containers = [];
       const gltfLoader = new GLTFLoader();
-      gltfLoader.load('../gltf/Cargo Container.gltf', (gltf) => {
+      gltfLoader.load('../../gltf/Cargo Container.gltf', (gltf) => {
         const template = gltf.scene;
         const count = isMobile ? 30 : 60;
         for (let i = 0; i < count; i++) {
@@ -189,7 +189,7 @@
 
       // Load and scatter uprooted trees
       const trees = [];
-      gltfLoader.load('../gltf/Uprooted_Tree.glb', (gltf) => {
+      gltfLoader.load('../../gltf/Uprooted_Tree.glb', (gltf) => {
         const template = gltf.scene;
         const count = isMobile ? 5 : 8;
         for (let i = 0; i < count; i++) {
@@ -233,7 +233,7 @@
 
       // Load and scatter 57 Chevys
       const chevys = [];
-      gltfLoader.load('../gltf/57Chevy.glb', (gltf) => {
+      gltfLoader.load('../../gltf/57Chevy.glb', (gltf) => {
         const template = gltf.scene;
         const count = isMobile ? 6 : 10;
         for (let i = 0; i < count; i++) {
@@ -318,11 +318,11 @@
 
       // Load Dutch (mascot) - rising up from behind centre of logo, facing camera
       const dutchLoader = new GLTFLoader();
-      dutchLoader.load('../gltf/dutch.glb', (gltf) => {
+      dutchLoader.load('../../gltf/dutch.glb', (gltf) => {
         const dutch = gltf.scene;
         dutch.scale.set(0.3, 0.3, 0.3);
         // Centred, just above the logo, slightly further back
-        dutch.position.set(0, 0.25, -6);
+        dutch.position.set(0, 0.15, -6);
         // Face the camera
         const lookMat = new THREE.Matrix4().lookAt(dutch.position, camera.position, new THREE.Vector3(0, 1, 0));
         const q = new THREE.Quaternion().setFromRotationMatrix(lookMat);
@@ -350,11 +350,11 @@
       (async function() {
         const titleCanvas = document.getElementById('bmf-title');
         const titleR = new BMFRenderer(titleCanvas);
-        await titleR.loadFont('../fonts/Quaked.bmf');
+        await titleR.loadFont('../../fonts/Quaked.bmf');
 
         const shadowOpts = { offsetX: 1, offsetY: 1, color: '#000000' };
         const titleText = 'CORE64';
-        const titleOpts = { scaleX: 16, scaleY: 16, shadow: shadowOpts, gradient: {
+        const titleOpts = { scaleX: 12, scaleY: 12, shadow: shadowOpts, gradient: {
           palette: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#00ffff', '#0088ff', '#ff00ff'],
           offset: 0,
         }};

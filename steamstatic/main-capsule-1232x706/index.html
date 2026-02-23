@@ -1,0 +1,372 @@
+<!doctype html>
+
+<html>
+
+  <head>
+
+    <title>CORE64 - Main Capsule 1232x706</title>
+    <meta name="format-detection" content="telephone=no">
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: 'Press Start 2P', monospace;
+        color: #fff;
+        overflow: hidden;
+      }
+      #skybox-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+      }
+      #bmf-title {
+        max-width: 90vw;
+        height: auto;
+        image-rendering: pixelated;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: crisp-edges;
+        pointer-events: none;
+      }
+      #content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        text-align: center;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+        pointer-events: none;
+      }
+      #vignette {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+        background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+      }
+      @font-face {
+        font-family: 'Press Start 2P';
+        src: url('../../ttf-fonts/PressStart2P-vaV7.ttf') format('truetype');
+        font-display: swap;
+      }
+    </style>
+
+  </head>
+
+  <body>
+
+    <canvas id="skybox-canvas"></canvas>
+    <div id="vignette"></div>
+
+    <div id="content">
+      <canvas id="bmf-title"></canvas>
+    </div>
+
+    <script src="../../bmf.js"></script>
+    <script type="importmap">
+      { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+    </script>
+    <script type="module">
+      import * as THREE from 'three';
+      import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/postprocessing/EffectComposer.js';
+      import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/postprocessing/RenderPass.js';
+      import { ShaderPass } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/postprocessing/ShaderPass.js';
+      import { OutputPass } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/postprocessing/OutputPass.js';
+      import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/loaders/GLTFLoader.js';
+
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const canvas = document.getElementById('skybox-canvas');
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(isMobile ? Math.min(window.devicePixelRatio, 2) : window.devicePixelRatio);
+
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+      // Skybox scene (hue shifted)
+      const skyScene = new THREE.Scene();
+      const loader = new THREE.CubeTextureLoader();
+      loader.setPath('../../images/');
+      const textureCube = loader.load([
+        'right.jpg', 'left.jpg',
+        'top.jpg', 'bottom.jpg',
+        'front.jpg', 'back.jpg'
+      ]);
+      skyScene.background = textureCube;
+
+      // Container scene (no hue shift)
+      const containerScene = new THREE.Scene();
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      containerScene.add(ambientLight);
+      const dirLight = new THREE.DirectionalLight(0xffeedd, 4.5);
+      dirLight.position.set(5, 10, 7);
+      containerScene.add(dirLight);
+      const fillLight = new THREE.DirectionalLight(0x8899bb, 2.25);
+      fillLight.position.set(-5, -3, -5);
+      containerScene.add(fillLight);
+
+      // Shared placement tracking for all spawned objects
+      const placed = [];
+      const minSep = 5;
+      const minSepSq = minSep * minSep;
+      function findPosition(index, total) {
+        let px, py, pz, attempts = 0;
+        do {
+          const u = (index + Math.random()) / total;
+          const dist = 15 + Math.cbrt(u) * 80;
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          px = dist * Math.sin(phi) * Math.cos(theta);
+          py = dist * Math.sin(phi) * Math.sin(theta);
+          pz = dist * Math.cos(phi);
+          attempts++;
+        } while (attempts < 50 && placed.some(p => {
+          const dx = px - p[0], dy = py - p[1], dz = pz - p[2];
+          return dx*dx + dy*dy + dz*dz < minSepSq;
+        }));
+        placed.push([px, py, pz]);
+        return [px, py, pz];
+      }
+
+      function findTreePosition(index, total) {
+        let px, py, pz, attempts = 0;
+        do {
+          const u = (index + Math.random()) / total;
+          const dist = 50 + Math.cbrt(u) * 150;
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          px = dist * Math.sin(phi) * Math.cos(theta);
+          py = dist * Math.sin(phi) * Math.sin(theta);
+          pz = dist * Math.cos(phi);
+          attempts++;
+        } while (attempts < 50 && placed.some(p => {
+          const dx = px - p[0], dy = py - p[1], dz = pz - p[2];
+          return dx*dx + dy*dy + dz*dz < minSepSq;
+        }));
+        placed.push([px, py, pz]);
+        return [px, py, pz];
+      }
+
+      // Load and scatter shipping containers
+      const containers = [];
+      const gltfLoader = new GLTFLoader();
+      gltfLoader.load('../../gltf/Cargo Container.gltf', (gltf) => {
+        const template = gltf.scene;
+        const count = isMobile ? 30 : 60;
+        for (let i = 0; i < count; i++) {
+          const [px, py, pz] = findPosition(i, count);
+
+          const instance = template.clone();
+          const hue = Math.random();
+          instance.traverse((child) => {
+            if (child.isMesh) {
+              child.material = child.material.clone();
+              child.material.color.setHSL(hue, 0.8, 0.55);
+            }
+          });
+          instance.position.set(px, py, pz);
+          instance.scale.set(0.01, 0.01, 0.01);
+          instance.rotation.set(
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2
+          );
+          instance.userData.tumble = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.0025,
+            (Math.random() - 0.5) * 0.0025,
+            (Math.random() - 0.5) * 0.0025
+          );
+          containerScene.add(instance);
+          containers.push(instance);
+        }
+      });
+
+      // Load and scatter uprooted trees
+      const trees = [];
+      gltfLoader.load('../../gltf/Uprooted_Tree.glb', (gltf) => {
+        const template = gltf.scene;
+        const count = isMobile ? 5 : 8;
+        for (let i = 0; i < count; i++) {
+          const [px, py, pz] = findTreePosition(i, count);
+          const instance = template.clone();
+          instance.position.set(px, py, pz);
+          instance.scale.set(3, 3, 3);
+          instance.rotation.set(
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2
+          );
+          instance.userData.tumble = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.0025,
+            (Math.random() - 0.5) * 0.0025,
+            (Math.random() - 0.5) * 0.0025
+          );
+          containerScene.add(instance);
+          trees.push(instance);
+        }
+      });
+
+      function findChevyPosition(index, total) {
+        let px, py, pz, attempts = 0;
+        do {
+          const u = (index + Math.random()) / total;
+          const dist = 8 + Math.cbrt(u) * 25;
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          px = dist * Math.sin(phi) * Math.cos(theta);
+          py = dist * Math.sin(phi) * Math.sin(theta);
+          pz = dist * Math.cos(phi);
+          attempts++;
+        } while (attempts < 50 && placed.some(p => {
+          const dx = px - p[0], dy = py - p[1], dz = pz - p[2];
+          return dx*dx + dy*dy + dz*dz < minSepSq;
+        }));
+        placed.push([px, py, pz]);
+        return [px, py, pz];
+      }
+
+      // Load and scatter 57 Chevys
+      const chevys = [];
+      gltfLoader.load('../../gltf/57Chevy.glb', (gltf) => {
+        const template = gltf.scene;
+        const count = isMobile ? 6 : 10;
+        for (let i = 0; i < count; i++) {
+          const [px, py, pz] = findChevyPosition(i, count);
+          const instance = template.clone();
+          instance.position.set(px, py, pz);
+          instance.scale.set(1, 1, 1);
+          instance.rotation.set(
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2
+          );
+          instance.userData.tumble = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.0025,
+            (Math.random() - 0.5) * 0.0025,
+            (Math.random() - 0.5) * 0.0025
+          );
+          containerScene.add(instance);
+          chevys.push(instance);
+        }
+      });
+
+      const hueShader = {
+        uniforms: { tDiffuse: { value: null }, uHue: { value: 0.0 } },
+        vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+        fragmentShader: `
+          uniform sampler2D tDiffuse;
+          uniform float uHue;
+          varying vec2 vUv;
+          vec3 rgb2hsl(vec3 c) {
+            float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b));
+            float l = (mx + mn) * 0.5, s = 0.0, h = 0.0;
+            if (mx != mn) {
+              float d = mx - mn;
+              s = l > 0.5 ? d / (2.0 - mx - mn) : d / (mx + mn);
+              if (mx == c.r) h = (c.g - c.b) / d + (c.g < c.b ? 6.0 : 0.0);
+              else if (mx == c.g) h = (c.b - c.r) / d + 2.0;
+              else h = (c.r - c.g) / d + 4.0;
+              h /= 6.0;
+            }
+            return vec3(h, s, l);
+          }
+          float hue2rgb(float p, float q, float t) {
+            if (t < 0.0) t += 1.0; if (t > 1.0) t -= 1.0;
+            if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
+            if (t < 1.0/2.0) return q;
+            if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+            return p;
+          }
+          vec3 hsl2rgb(vec3 c) {
+            if (c.y == 0.0) return vec3(c.z);
+            float q = c.z < 0.5 ? c.z * (1.0 + c.y) : c.z + c.y - c.z * c.y;
+            float p = 2.0 * c.z - q;
+            return vec3(hue2rgb(p, q, c.x + 1.0/3.0), hue2rgb(p, q, c.x), hue2rgb(p, q, c.x - 1.0/3.0));
+          }
+          void main() {
+            vec4 tex = texture2D(tDiffuse, vUv);
+            vec3 hsl = rgb2hsl(tex.rgb);
+            hsl.x = fract(hsl.x + uHue);
+            hsl.y = min(hsl.y * 1.15, 1.0);
+            hsl.z = min(hsl.z * 1.1, 1.0);
+            vec3 rgb = hsl2rgb(hsl);
+            rgb = (rgb - 0.5) * 1.01 + 0.5;
+            gl_FragColor = vec4(clamp(rgb, 0.0, 1.0), tex.a);
+          }
+        `
+      };
+
+      const composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(skyScene, camera));
+      const huePass = new ShaderPass(hueShader);
+      composer.addPass(huePass);
+      composer.addPass(new OutputPass());
+      renderer.autoClear = false;
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // Load Dutch (mascot) - rising up from behind centre of logo, facing camera
+      const dutchLoader = new GLTFLoader();
+      dutchLoader.load('../../gltf/dutch.glb', (gltf) => {
+        const dutch = gltf.scene;
+        dutch.scale.set(0.3, 0.3, 0.3);
+        // Centred, just above the logo, slightly further back
+        dutch.position.set(0, 0.25, -6);
+        // Face the camera
+        const lookMat = new THREE.Matrix4().lookAt(dutch.position, camera.position, new THREE.Vector3(0, 1, 0));
+        const q = new THREE.Quaternion().setFromRotationMatrix(lookMat);
+        q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0)));
+        dutch.quaternion.copy(q);
+        containerScene.add(dutch);
+      });
+
+      function animate() {
+        requestAnimationFrame(animate);
+        // Everything static for screenshots - no rotation, no tumbling
+        renderer.clear();
+        if (isMobile) {
+          renderer.render(skyScene, camera);
+        } else {
+          huePass.uniforms.uHue.value = (Date.now() * 0.00002) % 1.0;
+          composer.render();
+        }
+        renderer.clearDepth();
+        renderer.render(containerScene, camera);
+      }
+      animate();
+    </script>
+    <script>
+      (async function() {
+        const titleCanvas = document.getElementById('bmf-title');
+        const titleR = new BMFRenderer(titleCanvas);
+        await titleR.loadFont('../../fonts/Quaked.bmf');
+
+        const shadowOpts = { offsetX: 1, offsetY: 1, color: '#000000' };
+        const titleText = 'CORE64';
+        const titleOpts = { scaleX: 16, scaleY: 16, shadow: shadowOpts, gradient: {
+          palette: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#00ffff', '#0088ff', '#ff00ff'],
+          offset: 0,
+        }};
+        const titleSize = titleR.measureText(titleText, titleOpts);
+        titleCanvas.width = titleSize.width;
+        titleCanvas.height = titleSize.height;
+
+        // Static rainbow - single render, no animation
+        titleR.drawText(titleText, 0, 0, titleOpts);
+      })();
+    </script>
+
+  </body>
+
+</html>
