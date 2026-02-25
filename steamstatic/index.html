@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+  <title>CORE64 - Steam Capsule Preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    @font-face {
+      font-family: 'Press Start 2P';
+      src: url('../ttf-fonts/PressStart2P-vaV7.ttf') format('truetype');
+      font-display: swap;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Press Start 2P', monospace;
+      background: #1b2838;
+      color: #c6d4df;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 16px;
+      color: #fff;
+      margin-bottom: 2rem;
+      text-transform: uppercase;
+    }
+    .capsule {
+      margin-bottom: 3rem;
+    }
+    .capsule h2 {
+      font-size: 11px;
+      color: #66c0f4;
+      margin-bottom: 0.8rem;
+      text-transform: uppercase;
+    }
+    .capsule .dimensions {
+      font-size: 9px;
+      color: #556772;
+      margin-bottom: 0.8rem;
+    }
+    .capsule img {
+      display: block;
+      border: 1px solid #2a475e;
+      max-width: 100%;
+      height: auto;
+    }
+    .row {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+    a {
+      color: #66c0f4;
+      text-decoration: none;
+      font-size: 9px;
+    }
+    a:hover { color: #fff; }
+    .back { margin-bottom: 2rem; display: inline-block; }
+  </style>
+</head>
+<body>
+  <a class="back" href="/">&larr; Back to CIC Games</a>
+  <h1>Steam Store Capsule Preview</h1>
+
+  <div class="capsule">
+    <h2>Main Capsule</h2>
+    <p class="dimensions">1232 x 706</p>
+    <img src="main-capsule-1232x706.png" width="1232" height="706">
+  </div>
+
+  <div class="capsule">
+    <h2>Header Capsule</h2>
+    <p class="dimensions">920 x 430</p>
+    <img src="header-capsule-920x430.png" width="920" height="430">
+  </div>
+
+  <div class="row">
+    <div class="capsule">
+      <h2>Small Capsule</h2>
+      <p class="dimensions">462 x 174</p>
+      <img src="small-capsule-462x174.png" width="462" height="174">
+    </div>
+
+    <div class="capsule">
+      <h2>Vertical Capsule</h2>
+      <p class="dimensions">748 x 896</p>
+      <img src="vertical-capsule-748x896.png" width="748" height="896">
+    </div>
+  </div>
+</body>
+</html>
