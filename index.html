@@ -89,7 +89,7 @@
         src: url('ttf-fonts/PressStart2P-vaV7.ttf') format('truetype');
         font-display: swap;
       }
-      #play-btn {
+      .menu-item {
         font-family: 'Press Start 2P', monospace;
         font-size: 16px;
         color: #fff;
@@ -98,12 +98,12 @@
         pointer-events: auto;
         text-shadow: 2px 2px 0 #000, 0 0 8px rgba(0,0,0,0.7);
       }
-      @keyframes pulse-opacity {
-        0%, 100% { opacity: 0.2; }
-        50% { opacity: 1; }
+      .menu-item a {
+        color: #fff;
+        text-decoration: none;
       }
-      #play-btn.pulsing {
-        animation: pulse-opacity 2.1s ease-in-out infinite;
+      .menu-item a:hover {
+        color: #aaa;
       }
       body.story-mode {
         overflow: hidden;
@@ -160,7 +160,8 @@
 
     <div id="content">
       <canvas id="bmf-title"></canvas>
-      <div id="play-btn" class="pulsing">WHAT HAPPENED HERE?</div>
+      <div id="play-btn" class="menu-item">WHAT HAPPENED HERE?</div>
+      <div id="devlog-link" class="menu-item"><a href="/devlog">DEVELOPMENT LOG</a></div>
       <div id="backstory">
         <p class="date">NOVEMBER 6, 1980. 00:00:00 UTC.</p>
         <p class="emphasis">Earth vanished.</p>
@@ -791,6 +792,7 @@
           // Yeet Dutch and hide button, show backstory
           window.dispatchEvent(new Event('story-start'));
           playBtn.style.display = 'none';
+          document.getElementById('devlog-link').style.display = 'none';
           backstory.style.display = 'block';
           document.body.classList.add('story-mode');
           contentEl.classList.add('story-mode');
@@ -843,6 +845,7 @@
             storyActive = false;
             backstory.style.display = 'none';
             playBtn.style.display = '';
+            document.getElementById('devlog-link').style.display = '';
             document.body.classList.remove('story-mode');
             contentEl.classList.remove('story-mode');
             contentEl.style.transform = '';

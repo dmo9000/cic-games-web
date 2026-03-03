@@ -1,0 +1,347 @@
+<!doctype html>
+<html>
+<head>
+  <title>Development Log - CORE64</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    @font-face {
+      font-family: 'Press Start 2P';
+      src: url('../ttf-fonts/PressStart2P-vaV7.ttf') format('truetype');
+      font-display: swap;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Press Start 2P', monospace;
+      color: #aaa;
+      overflow: hidden;
+    }
+    #skybox-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+    }
+    #vignette {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+    }
+    #layout {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      width: 100%;
+      height: 100vh;
+    }
+    #sidebar {
+      width: 340px;
+      min-width: 340px;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 2rem 1.5rem;
+      text-transform: uppercase;
+      scrollbar-width: thin;
+      scrollbar-color: #333 transparent;
+    }
+    #sidebar::-webkit-scrollbar { width: 4px; }
+    #sidebar::-webkit-scrollbar-track { background: transparent; }
+    #sidebar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+    #sidebar h1 {
+      color: #44ff44;
+      font-size: 16px;
+      line-height: 1.8;
+      margin-bottom: 1.5em;
+    }
+    .entry-link {
+      display: block;
+      padding: 0.8em 1em;
+      margin-bottom: 0.4em;
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .entry-link:hover {
+      border-left-color: #44ff44;
+      background: rgba(68, 255, 68, 0.05);
+    }
+    .entry-link.active {
+      border-left-color: #44ff44;
+      background: rgba(68, 255, 68, 0.1);
+    }
+    .entry-link .date {
+      color: #ff4444;
+      font-size: 9px;
+      letter-spacing: 2px;
+      margin-bottom: 0.3em;
+    }
+    .entry-link .title {
+      color: #fff;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .entry-link.active .title {
+      color: #44ff44;
+    }
+    .back-link {
+      display: block;
+      margin-top: 1.5em;
+      padding: 0.8em 1em;
+      color: #44ff44;
+      font-size: 10px;
+      text-decoration: none;
+    }
+    .back-link:hover { color: #fff; }
+    #detail {
+      flex: 1;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 2rem 3rem;
+      text-transform: uppercase;
+      scrollbar-width: thin;
+      scrollbar-color: #333 transparent;
+    }
+    #detail::-webkit-scrollbar { width: 4px; }
+    #detail::-webkit-scrollbar-track { background: transparent; }
+    #detail::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+    .detail-entry { display: none; }
+    .detail-entry.active { display: block; }
+    .detail-entry .detail-date {
+      color: #ff4444;
+      font-size: 11px;
+      letter-spacing: 2px;
+      margin-bottom: 1em;
+    }
+    .detail-entry h2 {
+      color: #fff;
+      font-size: 16px;
+      line-height: 1.8;
+      margin-bottom: 1.5em;
+    }
+    .detail-entry h3 {
+      color: #66c0f4;
+      font-size: 12px;
+      line-height: 1.8;
+      margin-top: 1.5em;
+      margin-bottom: 1em;
+    }
+    .detail-entry p {
+      font-size: 13px;
+      line-height: 2.4;
+      margin-bottom: 1.5em;
+    }
+    .core-voice { color: #44ff44; }
+    .emphasis { color: #fff; }
+    #placeholder {
+      color: #555;
+      font-size: 13px;
+      line-height: 2.4;
+      padding-top: 30vh;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    @media (max-width: 768px) {
+      #layout { flex-direction: column; }
+      #sidebar {
+        width: 100%;
+        min-width: unset;
+        height: 40vh;
+        border-bottom: 1px solid #333;
+      }
+      #detail {
+        height: 60vh;
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="skybox-canvas"></canvas>
+  <div id="vignette"></div>
+  <div id="layout">
+    <div id="sidebar">
+      <h1>Development Log</h1>
+
+      <div class="entry-link" data-entry="mar-2026">
+        <div class="date">March 2026</div>
+        <div class="title">Procedural Station Overhaul</div>
+      </div>
+      <div class="entry-link" data-entry="feb-2026">
+        <div class="date">February 2026</div>
+        <div class="title">Multiplayer, Stations, Flight</div>
+      </div>
+      <div class="entry-link" data-entry="jan-2026">
+        <div class="date">January 2026</div>
+        <div class="title">Combat, Enemies, Arcade</div>
+      </div>
+      <div class="entry-link" data-entry="dec-2025">
+        <div class="date">December 2025</div>
+        <div class="title">Z80 Replication, AI, BBS</div>
+      </div>
+      <div class="entry-link" data-entry="nov-2025">
+        <div class="date">November 2025</div>
+        <div class="title">First Light</div>
+      </div>
+
+      <a class="back-link" href="/">&larr; Back to CIC Games</a>
+    </div>
+
+    <div id="detail">
+      <div id="placeholder">Select an entry to read</div>
+
+      <div class="detail-entry" id="mar-2026">
+        <div class="detail-date">March 2026</div>
+        <h2>Procedural Station Overhaul</h2>
+        <p>Fixed 15 defects in the procedural space station generator. Added a proper room grid system for per-tile room tracking. Rewrote docking bay and corridor wall detection. Maze decorator now uses 1x1 cells with 1-wide passages. Mirror duplication applies to all rooms, not just docking bays.</p>
+        <p>Fixed spaceship re-entry at remote stations &mdash; the server was checking distance from spawn point instead of the ship's actual position due to stale actor location under client-authoritative physics.</p>
+        <p>Unpossessed pawns (parked ships, idle characters) now heartbeat their universe position back to the server so newly arriving clients can see them.</p>
+      </div>
+
+      <div class="detail-entry" id="feb-2026">
+        <div class="detail-date">February 2026</div>
+        <h2>Multiplayer, Stations, Flight</h2>
+
+        <h3>Multiplayer Animation Replication</h3>
+        <p>Remote clients can now see other players' weapon equip state, aim direction, and walking animations. Controller rotation replicates via server RPC for aim offset. Weapon selection replicates via ActiveWeaponIndex so the correct animation blueprint activates on all clients.</p>
+        <p>Replaced procedural hip-fire spine rotation with proper AimOffset nodes in the animation blueprint. Look At and Two Bone IK handle weapon aiming and left hand placement.</p>
+
+        <h3>Client-Authoritative Movement</h3>
+        <p>Switched to client-authoritative physics for both spaceships and characters. The owning client runs the simulation and syncs state to the server. Non-owning clients receive replicated positions. This eliminates the server overwriting client position and fixes jittery movement.</p>
+        <p>Floating origin rebase system handles VFX, chase camera, and universe coordinates so the game world extends far beyond float precision limits.</p>
+
+        <h3>Procedural Space Stations</h3>
+        <p>Complete port of the station-maker algorithm into Unreal Engine. Procedural stations generate at runtime using Hierarchical Instanced Static Meshes. Rorschach symmetry, T-junctions, glass corridors, docking bays with double-height ceilings, shield openings, and decorator rooms including mazes and storage.</p>
+        <p>Stations generate on proximity and load lazily in multiplayer. 14 stations now populate the universe.</p>
+
+        <h3>Autopilot and Interstation Flight</h3>
+        <p>Autopilot navigation system for interstation travel. Speed scales inversely with distance for smooth approach. Anti-oscillation prevents overshooting the target. Unified speed ceiling at 1 km/s.</p>
+        <p>Fixed the 50km freeze bug &mdash; async mesh loading for lazily loaded stations was blocking the game thread.</p>
+
+        <h3>Dutch the Rubber Duck</h3>
+        <p>Dutch joins the crew as the in-game mascot. Added zero-G physics system. Fixed enemy physics and station Nanite rendering.</p>
+        <p>Hyperspace progress now integrates into the normal terminal display. Targeting reticule hides during hyperspace jumps.</p>
+
+        <h3>Build and Packaging</h3>
+        <p>Third-person and first-person character systems with weapons. Container spawner actor populates the world with debris. Title screen with music, camera fade-in, and 1UP/2UP mode handling for singleplayer and multiplayer.</p>
+        <p>Packaged client and server builds with automated build scripts. Parallel builds, safety checks, and stale binary detection.</p>
+      </div>
+
+      <div class="detail-entry" id="jan-2026">
+        <div class="detail-date">January 2026</div>
+        <h2>Combat, Enemies, Arcade</h2>
+
+        <h3>Weapon Systems</h3>
+        <p>Dual-mesh first-person system using UE5 primitive rendering for the weapon view. Full-body FPS with gender system. Rifle and pistol with equip animations, fire montages, muzzle flash, visible projectiles, and recoil recovery.</p>
+        <p>ADS (aim down sights) with FOV zoom, iron sights offset, crosshair fade, and foreground depth priority. 3D spatial sound for all weapons. Bullet hit spark VFX, ricochet effects, and red rifle laser tracers.</p>
+        <p>Full multiplayer replication &mdash; weapon firing, projectile spawning, muzzle flash, and tracer colours all sync across clients via NetMulticast RPCs.</p>
+
+        <h3>AI Enemies</h3>
+        <p>Non-humanoid enemies with NavMesh AI, death sequences, and ranged attacks with spatial audio. Humanoid enemies with weapon replication and C++ AI controllers. SnurkenDreck enemies with faction-based spawning.</p>
+        <p>Unified EnemyAIController base class. AI state machine with GUARD, ADVANCE, IDLE, and FLEE modes. Strafe-advance behaviour, line-of-sight checks, flee debouncing, and threat response. Biorhythm display system shows the emotional state of all characters.</p>
+        <p>BMF status labels float above AI characters showing their current state. WalkaboutBot follows the player on F key with distance-based speed.</p>
+
+        <h3>Arcade Emulator</h3>
+        <p>MITEMU arcade emulator integrated into the game world. Walk up to an arcade cabinet and play Mat Mania / Exciting Hour. CRT material overlay for that authentic arcade look. Fixed cabinet controls, timing, and audio integration.</p>
+
+        <h3>Title Screen and Multiplayer Lobby</h3>
+        <p>Built a full title screen with 1UP and 2UP mode selection. Server probing via Online Beacons shows which servers are available on the LAN. Proper client flow through a MainMenu lobby level before connecting to the game server.</p>
+        <p>Menu music with fade-out on game start, camera fade-in, ESC pause menu. HTTP health check API with build version. Automated build versioning with client/server mismatch detection.</p>
+
+        <h3>Inventory and Credits</h3>
+        <p>UE56Inventory plugin with a grid-based inventory UI. Credit pickup system scattered throughout stations. Inventory persists across sessions using client IDs. Stack limits enforced.</p>
+        <p>Added Linux platform support for dedicated server deployment.</p>
+      </div>
+
+      <div class="detail-entry" id="dec-2025">
+        <div class="detail-date">December 2025</div>
+        <h2>Z80 Replication, AI, BBS</h2>
+
+        <h3>Z80 Terminal Replication</h3>
+        <p>Server-side Z80 emulation now replicates terminal screens to all connected clients. Delta compression reduces bandwidth by encoding only changed screen regions. Adaptive serialization &mdash; palette-mode terminals compress 5x smaller than full-colour.</p>
+        <p>Terminal API supports escape sequences and individual terminal addressing by ID. Keyboard input routes correctly from client to the terminal's serial port.</p>
+
+        <h3>AI Companions</h3>
+        <p>ClaudebotPawn converted to a full ACharacter with smooth network movement and companion AI. Follows the player around the station. POV camera captures what the bot sees at 2560x1440.</p>
+        <p>DroidBot uses rotate-then-move AI for natural-looking patrol behaviour. WalkaboutBot has return-home behaviour. Dynamic NavMesh generation for procedural space station interiors.</p>
+
+        <h3>BBS Enhanced Mode</h3>
+        <p>BBS terminals support enhanced mode with custom font callbacks. Per-canvas font rendering &mdash; no global state pollution between terminals. Added cursor save/restore escape sequences. Ambient music and softer flashlight for atmosphere.</p>
+        <p>BMF label rendering fixed when attached to scaled meshes. Journal entries documenting the 8000km expedition across the universe.</p>
+      </div>
+
+      <div class="detail-entry" id="nov-2025">
+        <div class="detail-date">November 2025</div>
+        <h2>First Light</h2>
+
+        <h3>Cerberus 2100</h3>
+        <p>Implemented the Cerberus 2100 Z80 computer system with VGA display and serial console inside the game world. ANSI terminal rendering via the 8btty engine. Per-canvas state for multi-terminal independence.</p>
+        <p>Disk status UI widget shows mounted drives in both 3D widget and HUD overlay. Boot loader, keyboard input, and screen clearing all functional.</p>
+
+        <h3>CP/M Emulation</h3>
+        <p>Z80Pack CP/M emulation framework running inside Unreal Engine. Complete keyboard input support with CTRL, Shift, and CAPS LOCK. SIO/2 serial protocol implementation. FAT-CAT keyboard input with 50Hz NMI emulation.</p>
+        <p>Fixed the DIR A: hang &mdash; UE5's semicolon key was bound to a debug camera, intercepting CP/M input.</p>
+
+        <h3>Initial Commit</h3>
+        <p class="emphasis">RetroCompute ANSI terminal rendering working.</p>
+        <p>The first pixels of Universe-0 flicker to life on a virtual CRT. A Z80 processor boots CP/M inside an Unreal Engine space station. The terminal cursor blinks. Everything that follows builds on this moment.</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    const canvas = document.getElementById('skybox-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const scene = new THREE.Scene();
+    const loader = new THREE.CubeTextureLoader();
+    loader.setPath('../images/');
+    scene.background = loader.load(['right.jpg', 'left.jpg', 'top.jpg', 'bottom.jpg', 'front.jpg', 'back.jpg']);
+    const angle = Math.random() * Math.PI * 2;
+    const rotY = Math.cos(angle) * 0.0005;
+    const rotX = Math.sin(angle) * 0.0005;
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    function animate() {
+      requestAnimationFrame(animate);
+      camera.rotation.y += rotY;
+      camera.rotation.x += rotX;
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+  <script>
+    const links = document.querySelectorAll('.entry-link');
+    const entries = document.querySelectorAll('.detail-entry');
+    const placeholder = document.getElementById('placeholder');
+
+    links.forEach(link => {
+      link.addEventListener('click', () => {
+        const id = link.dataset.entry;
+
+        // Update active link
+        links.forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+
+        // Show matching entry
+        placeholder.style.display = 'none';
+        entries.forEach(e => e.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+
+        // Scroll detail pane to top
+        document.getElementById('detail').scrollTop = 0;
+      });
+    });
+  </script>
+</body>
+</html>
